@@ -1,0 +1,25 @@
+[tool.pylint."messages control"]
+disable = [
+    'C0114', # missing-module-docstring
+    'C0115', # missing-class-docstring
+    'C0116', # missing-function-docstring
+    'R0903', # too-few-public-methods
+    'R0913', # too-many-arguments
+    'C0415', # import-outside-toplevel
+    'W0613', # unused-argument
+    'R0801', # duplicate-code
+    'W0718', # broad-exception-caught
+    'R0917', # too-many-positional-argument
+    'E5110', # django-not-configured
+    'R0902' # too-many-instance-attributes
+]
+
+[tool.pylint.exceptions]
+max-line-length = 120
+
+[tool.pylint.reports]
+output-format = 'colorized'
+
+[tool.pylint.main]
+load-plugins = ['pylint_django']
+ignore = ['migrations', 'variables', 'static', '.venv', 'apps.py']
