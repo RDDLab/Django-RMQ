@@ -35,7 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP",
-    "Topic :: RabbitMQ",
+    "Topic :: System :: Networking",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed"
@@ -56,3 +56,10 @@ dev = [
 
 [project.urls]
 Homepage = "https://django-rmq.rdd-lab.com/"
+Repository = "https://github.com/RDDLab/Django-RMQ"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
