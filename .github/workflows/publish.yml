@@ -13,7 +13,7 @@ jobs:
   # The testing phase of a package with supported Python versions
   test:
     # runs-on: ubuntu-latest
-    runs-on: [self-hosted]
+    runs-on: self-hosted
 
     strategy:
       matrix:
@@ -38,7 +38,7 @@ jobs:
   # Assemble the package (once, py3-none-any)
   release-build:
     # runs-on: ubuntu-latest
-    runs-on: [self-hosted]
+    runs-on: self-hosted
     needs: test
 
     steps:
@@ -62,7 +62,7 @@ jobs:
   # Publish on PyPI
   pypi-publish:
     # runs-on: ubuntu-latest
-    runs-on: [self-hosted]
+    runs-on: self-hosted
     needs: release-build
 
     permissions:
