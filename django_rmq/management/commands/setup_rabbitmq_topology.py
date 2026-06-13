@@ -4,15 +4,13 @@ from typing import (
 )
 
 from django.core.exceptions import ImproperlyConfigured
-from django.core.management.base import (
-    BaseCommand,
-    CommandParser,
-)
+from django.core.management.base import CommandParser
 from django.utils.termcolors import make_style
 from pika.exchange_type import ExchangeType
 
 import django_rmq
 from django_rmq.connections import get_connection_manager
+from django_rmq.management.commands.base_rdd_command import RDDBaseCommand
 from django_rmq.registries.setup_registry import get_setup_registry
 
 if TYPE_CHECKING:
@@ -96,7 +94,7 @@ class RecordingChannel(_ChannelBase):
         return self._channel.queue_bind(queue=queue, exchange=exchange, routing_key=routing_key, **kwargs)
 
 
-class Command(BaseCommand):
+class Command(RDDBaseCommand):
     """
     Management command that declares all RabbitMQ exchanges and queues.
 
@@ -128,6 +126,8 @@ class Command(BaseCommand):
         :raises ImproperlyConfigured: If django_rmq has not been initialized.
         """
         using: str | None = kwargs.get('using')
+
+        self._print_banner()
 
         if django_rmq.connection_managers is None:
             raise ImproperlyConfigured('django_rmq is not initialized. Add "django_rmq" to INSTALLED_APPS.')

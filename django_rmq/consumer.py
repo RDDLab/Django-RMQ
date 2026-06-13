@@ -83,6 +83,29 @@ class Consumer:
         self._reconnect_max_backoff_override: float | None = reconnect_max_backoff
         self._handler: MessageCallback | None = None
 
+    @property
+    def prefetch_count(self) -> int:
+        """
+        Maximum number of unacknowledged messages the broker delivers at once.
+        """
+        return self._prefetch_count
+
+    @property
+    def using(self) -> str | None:
+        """
+        Connection alias the consumer is bound to, or None when the single
+        configured connection is used implicitly.
+        """
+        return self._using
+
+    @property
+    def handler_name(self) -> str:
+        """
+        Name of the registered message handler, or 'unregistered' if none has
+        been attached yet.
+        """
+        return self._handler.__name__ if self._handler is not None else 'unregistered'
+
     def handler(self, func: 'MessageCallback') -> 'MessageCallback':
         """
         Registers a callback for incoming messages.

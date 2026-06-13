@@ -3,19 +3,18 @@ import signal
 import threading
 
 from django.core.exceptions import ImproperlyConfigured
-from django.core.management.base import (
-    BaseCommand,
-    CommandParser,
-)
+from django.core.management.base import CommandParser
 
 import django_rmq
 from django_rmq.consumer import Consumer
+from django_rmq.management.commands.base_rdd_command import RDDBaseCommand
+from django_rmq.management.enums.command_styles import CommandStyle
 from django_rmq.registries.registry import get_consumers_registry
 
 logger = logging.getLogger('rabbitmq')
 
 
-class Command(BaseCommand):
+class Command(RDDBaseCommand):
     """
     Management command that starts all registered RabbitMQ consumers.
 
@@ -25,6 +24,31 @@ class Command(BaseCommand):
     """
 
     help = 'Start all registered RabbitMQ consumers'
+
+    def _print_consumers(self, consumers_by_alias: dict[str, list[Consumer]]) -> None:
+        """
+        Prints the consumers that are about to start, grouped by connection alias.
+
+        Each alias is shown as a header followed by one line per consumer with its
+        queue, prefetch count and registered handler. A trailing separator detaches
+        the block from the log output that follows.
+
+        :param consumers_by_alias: Mapping of connection alias to the consumers
+                                   registered for it, in start order.
+        """
+        self.stdout.write(CommandStyle.BOLD_GREEN.apply(text='Consumers'))
+        for alias, consumers in consumers_by_alias.items():
+            self.stdout.write(CommandStyle.BOLD.apply(text=f'Alias: {alias}'))
+            for index, consumer in enumerate(consumers):
+                is_last: bool = index == len(consumers) - 1
+                branch: str = '└─' if is_last else '├─'
+                self.stdout.write(
+                    f'  {branch} queue={consumer.queue}  '
+                    f'prefetch_count={consumer.prefetch_count}  '
+                    f'handler={consumer.handler_name} — Is consuming...'
+                )
+
+        self.stdout.write(self.style.SUCCESS(self._separator()))
 
     def add_arguments(self, parser: CommandParser) -> None:
         """
@@ -48,6 +72,8 @@ class Command(BaseCommand):
         _source: str = 'start_consumers'
         using: str | None = kwargs.get('using')
 
+        self._print_banner()
+
         if django_rmq.consumers_registries is None:
             raise ImproperlyConfigured('django_rmq is not initialized. Add "django_rmq" to INSTALLED_APPS.')
 
@@ -56,14 +82,18 @@ class Command(BaseCommand):
         else:
             aliases = list(django_rmq.consumers_registries.keys())
 
-        pairs: list[tuple[str, Consumer]] = []
-        for alias in aliases:
-            for consumer in get_consumers_registry(using=alias).all():
-                pairs.append((alias, consumer))
+        consumers_by_alias: dict[str, list[Consumer]] = {
+            alias: list(get_consumers_registry(using=alias).all()) for alias in aliases
+        }
+        pairs: list[tuple[str, Consumer]] = [
+            (alias, consumer) for alias, consumers in consumers_by_alias.items() for consumer in consumers
+        ]
 
         if not pairs:
             logger.warning({'source': _source, 'message': 'No consumers registered'})
             return
+
+        self._print_consumers(consumers_by_alias=consumers_by_alias)
 
         stop_event: threading.Event = threading.Event()
 
