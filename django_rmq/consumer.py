@@ -1,10 +1,8 @@
 import functools
 import logging
 import threading
+from collections.abc import Callable
 from typing import (
-    Callable,
-    Optional,
-    Union,
     TYPE_CHECKING,
 )
 
@@ -23,14 +21,8 @@ from django_rmq.queues.queue_config import QueueConfig
 logger = logging.getLogger('rabbitmq')
 
 if TYPE_CHECKING:
-    from pika.adapters.blocking_connection import (
-        BlockingChannel,
-        BlockingConnection
-    )
-    from pika.spec import (
-        Basic,
-        BasicProperties
-    )
+    from pika.adapters.blocking_connection import BlockingChannel, BlockingConnection
+    from pika.spec import Basic, BasicProperties
 
 _RECONNECTABLE_ERRORS = (
     AMQPConnectionError,
@@ -46,77 +38,95 @@ MessageCallback = Callable[['BlockingChannel', 'Basic.Deliver', 'BasicProperties
 
 class Consumer:
     """
-    Потребляет сообщения из одной очереди RabbitMQ с одним зарегистрированным
-    обработчиком. Цикл потребления переподключается при временных AMQP-ошибках
-    с экспоненциальной задержкой (ограниченной `reconnect_max_backoff`), опрашивает
-    `stop_event` примерно раз в секунду для отзывчивого завершения работы и
-    сбрасывает устаревшие Django DB-соединения перед каждой диспетчеризацией
-    (передачи обработки зарегистрированному хендлеру).
+    Consumes messages from a single RabbitMQ queue with one registered
+    handler. The consume loop reconnects on transient AMQP errors with
+    exponential backoff (capped at `reconnect_max_backoff`), polls
+    `stop_event` roughly once per second for responsive shutdown, and
+    closes stale Django DB connections before each dispatch (handing the
+    message off to the registered handler).
     """
 
     def __init__(
         self,
-        queue: Union[QueueConfig, str],
+        queue: QueueConfig | str,
         prefetch_count: int = 1,
-        reconnect_initial_backoff: Optional[float] = None,
-        reconnect_max_backoff: Optional[float] = None,
-        using: Optional[str] = None,
+        reconnect_initial_backoff: float | None = None,
+        reconnect_max_backoff: float | None = None,
+        using: str | None = None,
     ) -> None:
         """
-        :param using: Alias соединения из `RABBITMQ_CONNECTIONS`. Если сконфигурировано
-                      ровно одно соединение — можно опустить. При нескольких — обязателен.
-        :param reconnect_initial_backoff: Переопределение начальной задержки. Если не
-                      передано — берётся из конфига соответствующего соединения.
-        :param reconnect_max_backoff: Переопределение максимальной задержки. Если не
-                      передано — берётся из конфига соответствующего соединения.
+        Initializes the Consumer.
+
+        :param queue: Queue configuration (QueueConfig) or its name as a string.
+                      Determines the queue to consume from and how it is declared
+                      on the broker (passively for a plain string, actively with
+                      arguments for a QueueConfig).
+        :param prefetch_count: Maximum number of unacknowledged messages the broker
+                      delivers at once (basic_qos). Defaults to 1 for fair dispatch.
+        :param reconnect_initial_backoff: Override for the initial reconnect delay
+                      in seconds. If not passed, taken from the connection's config.
+        :param reconnect_max_backoff: Override for the maximum reconnect delay in
+                      seconds. If not passed, taken from the connection's config.
+        :param using: Connection alias from `RABBITMQ_CONNECTIONS`. May be omitted when
+                      exactly one connection is configured. Required when there are several.
         """
         self.queue: str = str(queue)
-        self._queue_config: Union[QueueConfig, str] = queue
+        self._queue_config: QueueConfig | str = queue
         self._prefetch_count: int = prefetch_count
-        self._using: Optional[str] = using
+        self._using: str | None = using
 
-        config = get_connection_manager(using=using).config
-        self._reconnect_initial_backoff: float = (  # noqa
-            reconnect_initial_backoff if reconnect_initial_backoff is not None
-            else config.reconnect_initial_backoff
-        )
-        self._reconnect_max_backoff: float = (  # noqa
-            reconnect_max_backoff if reconnect_max_backoff is not None
-            else config.reconnect_max_backoff
-        )
-        self._handler: Optional['MessageCallback'] = None
+        # Backoff overrides are read lazily — the effective values are
+        # resolved from the connection config in consume(), not in __init__.
+        # This allows creating a Consumer at module level (before
+        # AppConfig.ready() has initialized django_rmq), like Producer.
+        self._reconnect_initial_backoff_override: float | None = reconnect_initial_backoff
+        self._reconnect_max_backoff_override: float | None = reconnect_max_backoff
+        self._handler: MessageCallback | None = None
 
     def handler(self, func: 'MessageCallback') -> 'MessageCallback':
         """
-        Регистрирует callback для входящих сообщений.
+        Registers a callback for incoming messages.
+
+        :param func: The callback invoked for every delivered message. It receives
+                     the channel, the delivery method, the message properties, and
+                     the raw body bytes.
+        :return: The same `func`, unchanged, so it can be used as a decorator.
+        :raises RuntimeError: If a handler has already been registered.
         """
         if self._handler is not None:
-            raise RuntimeError(
-                f'Consumer for queue {self.queue!r} already has a handler'
-            )
+            raise RuntimeError(f'Consumer for queue {self.queue!r} already has a handler')
         self._handler = func
         return func
 
     def __call__(self, func: 'MessageCallback') -> 'MessageCallback':
         """
-        Сокращённый вариант `@consumer.handler`.
+        Shorthand for `@consumer.handler`.
+
+        :param func: The callback to register as the message handler.
+        :return: The same `func`, unchanged, so it can be used as a decorator.
         """
         return self.handler(func=func)
 
-    def consume(self, stop_event: Optional[threading.Event] = None) -> None:
+    def consume(self, stop_event: threading.Event | None = None) -> None:
         """
-        Запускает потребление сообщений с переподключением при временных AMQP-ошибках.
+        Starts consuming messages, reconnecting on transient AMQP errors.
 
-        При восстанавливаемой ошибке:
-        1. Логирует предупреждение;
-        2. Ожидает `backoff` секунд; stop_event.wait позволяет мгновенно завершить работу во время ожидания.
-        3. Удваивает задержку до `reconnect_max_backoff`, затем повторяет попытку.
-        4. Цикл завершается при установке stop_event или при возникновении невосстанавливаемой ошибки.
-        В этом случае stop_event.wait немедленно пробудится -> управление перейдёт к
+        On a recoverable error:
+        1. Logs a warning;
+        2. Waits `backoff` seconds; stop_event.wait allows instant shutdown during the wait.
+        3. Doubles the delay up to `reconnect_max_backoff`, then retries.
+        4. The loop ends when stop_event is set or an unrecoverable error occurs.
+        In that case stop_event.wait wakes up immediately -> control passes to
         `while not stop_event.is_set()`
+
+        :param stop_event: Event used to request a graceful shutdown. When set, the
+                           consume loop exits at the next poll (roughly once per
+                           second) and during any reconnect backoff wait. If not
+                           passed, a fresh internal Event is created (never set,
+                           so the consumer runs until an unrecoverable error).
         """
         source: str = 'Consumer.consume'
-        handler: Optional['MessageCallback'] = self._handler
+        handler: MessageCallback | None = self._handler
         if handler is None:
             logger.warning(
                 {
@@ -128,7 +138,18 @@ class Consumer:
             return
 
         stop_event = stop_event if stop_event is not None else threading.Event()
-        backoff: float = self._reconnect_initial_backoff
+        config = get_connection_manager(using=self._using).config
+        initial_backoff: float = (
+            self._reconnect_initial_backoff_override
+            if self._reconnect_initial_backoff_override is not None
+            else config.reconnect_initial_backoff
+        )
+        max_backoff: float = (
+            self._reconnect_max_backoff_override
+            if self._reconnect_max_backoff_override is not None
+            else config.reconnect_max_backoff
+        )
+        backoff: float = initial_backoff
 
         while not stop_event.is_set():
             try:
@@ -147,16 +168,13 @@ class Consumer:
                     }
                 )
                 stop_event.wait(timeout=backoff)
-                backoff = min(backoff * 2, self._reconnect_max_backoff)
+                backoff = min(backoff * 2, max_backoff)
             except Exception as exc:
                 logger.error(
                     {
                         'source': source,
                         'message': 'Consumer encountered an unrecoverable error',
-                        'data': {
-                            'queue': self.queue,
-                            'error': str(exc)
-                        },
+                        'data': {'queue': self.queue, 'error': str(exc)},
                     }
                 )
                 raise
@@ -167,13 +185,17 @@ class Consumer:
         stop_event: threading.Event,
     ) -> None:
         """
-        Один цикл: подключение → потребление → отключение. Возвращает управление при
-        срабатывании stop_event; выбрасывает восстанавливаемую AMQP-ошибку для запуска
-        внешнего цикла с задержкой переподключения.
+        One cycle: connect → consume → disconnect. Returns control when
+        stop_event fires; raises a recoverable AMQP error to trigger the
+        outer loop with its reconnect delay.
+
+        :param handler: The registered callback invoked for each delivered message.
+        :param stop_event: Event polled once per second; when set, the session
+                           leaves its consume loop and closes the channel cleanly.
         """
         source: str = 'Consumer._run_session'
-        connection: 'BlockingConnection' = get_connection_manager(using=self._using).get_consumer_connection()
-        channel: 'BlockingChannel' = connection.channel()
+        connection: BlockingConnection = get_connection_manager(using=self._using).get_consumer_connection()
+        channel: BlockingChannel = connection.channel()
         try:
             self._declare_queue(channel=channel)
             channel.basic_qos(prefetch_count=self._prefetch_count)
@@ -207,6 +229,15 @@ class Consumer:
                 channel.close()
 
     def _declare_queue(self, channel: 'BlockingChannel') -> None:
+        """
+        Declares the queue on the broker before consuming.
+
+        For a QueueConfig the queue is declared actively with its durability and
+        arguments (e.g. dead-letter routing). For a plain string name the queue is
+        declared durable with default arguments.
+
+        :param channel: The active AMQP channel used for the declaration.
+        """
         if isinstance(self._queue_config, QueueConfig):
             channel.queue_declare(
                 queue=self.queue,
@@ -224,9 +255,22 @@ class Consumer:
         props: 'BasicProperties',
         body: bytes,
     ) -> None:
+        """
+        Hands a single delivery to the registered handler.
+
+        Refreshes Django DB connections first, then calls the handler. If the
+        handler raises, the message is nacked without requeue so it goes to the
+        dead-letter exchange (if configured) instead of being redelivered forever.
+
+        :param handler: The registered callback to invoke for this message.
+        :param ch: The channel the message was delivered on (used to ack/nack).
+        :param method: Delivery metadata, including the delivery_tag.
+        :param props: AMQP message properties of the delivery.
+        :param body: Raw message body bytes.
+        """
         source: str = 'Consumer._dispatch'
-        # Долгоживущие потоки-потребители иначе удерживают мёртвые
-        # Postgres-сокеты после срабатывания серверного таймаута простоя.
+        # Long-lived consumer threads otherwise hold dead Postgres sockets
+        # after the server-side idle timeout fires.
         close_old_connections()
         try:
             handler(ch, method, props, body)

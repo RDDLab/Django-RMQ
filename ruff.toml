@@ -1,0 +1,35 @@
+line-length = 120
+target-version = "py310"
+exclude = [
+    "migrations",
+    "variables",
+    "static",
+    ".venv",
+]
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "TID", # flake8-tidy-imports
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific rules
+    "PL",  # pylint port
+]
+ignore = [
+    "PLC0415", # import-outside-top-level (pylint C0415)
+]
+
+[lint.per-file-ignores]
+"apps.py" = ["F401"]
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[format]
+quote-style = "single"

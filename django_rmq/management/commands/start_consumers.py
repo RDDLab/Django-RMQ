@@ -1,11 +1,6 @@
 import logging
 import signal
 import threading
-from typing import (
-    List,
-    Optional,
-    Tuple,
-)
 
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import (
@@ -21,9 +16,20 @@ logger = logging.getLogger('rabbitmq')
 
 
 class Command(BaseCommand):
+    """
+    Management command that starts all registered RabbitMQ consumers.
+
+    Each registered consumer runs in its own thread sharing a single stop event.
+    SIGTERM/SIGINT trigger a graceful shutdown, after which the command joins all
+    threads before returning.
+    """
+
     help = 'Start all registered RabbitMQ consumers'
 
     def add_arguments(self, parser: CommandParser) -> None:
+        """
+        Registers the command-line arguments.
+        """
         parser.add_argument(
             '--using',
             dest='using',
@@ -32,32 +38,37 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **kwargs) -> None:
-        source = 'start_consumers'
-        using: Optional[str] = kwargs.get('using')
+        """
+        Starts the consumer threads for one or all aliases and waits for shutdown.
+
+        :param kwargs: Parsed options; `using` selects a single alias, or starts
+                       consumers for every alias when omitted.
+        :raises ImproperlyConfigured: If django_rmq has not been initialized.
+        """
+        _source: str = 'start_consumers'
+        using: str | None = kwargs.get('using')
 
         if django_rmq.consumers_registries is None:
-            raise ImproperlyConfigured(
-                'django_rmq is not initialized. Add "django_rmq" to INSTALLED_APPS.'
-            )
+            raise ImproperlyConfigured('django_rmq is not initialized. Add "django_rmq" to INSTALLED_APPS.')
 
         if using is not None:
-            aliases: List[str] = [using]
+            aliases: list[str] = [using]
         else:
             aliases = list(django_rmq.consumers_registries.keys())
 
-        pairs: List[Tuple[str, Consumer]] = []
+        pairs: list[tuple[str, Consumer]] = []
         for alias in aliases:
             for consumer in get_consumers_registry(using=alias).all():
                 pairs.append((alias, consumer))
 
         if not pairs:
-            logger.warning({'source': source, 'message': 'No consumers registered'})
+            logger.warning({'source': _source, 'message': 'No consumers registered'})
             return
 
-        stop_event = threading.Event()
+        stop_event: threading.Event = threading.Event()
 
         def _signal_stop(*_args) -> None:
-            logger.info({'source': source, 'message': 'Stop signal received'})
+            logger.info({'source': _source, 'message': 'Stop signal received'})
             stop_event.set()
 
         signal.signal(signal.SIGTERM, _signal_stop)
@@ -73,7 +84,7 @@ class Command(BaseCommand):
             thread.start()
             logger.info(
                 {
-                    'source': source,
+                    'source': _source,
                     'message': 'Consumer thread started',
                     'data': {'alias': alias, 'queue': consumer.queue},
                 }
@@ -83,4 +94,4 @@ class Command(BaseCommand):
         for thread in threads:
             thread.join()
 
-        logger.info({'source': source, 'message': 'All consumer threads stopped'})
+        logger.info({'source': _source, 'message': 'All consumer threads stopped'})
