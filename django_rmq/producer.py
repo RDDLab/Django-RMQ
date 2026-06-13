@@ -1,15 +1,9 @@
 import logging
+from collections.abc import Callable
 from functools import wraps
-from typing import (
-    Any,
-    Callable,
-    Optional,
-    Union,
-    TYPE_CHECKING
-)
+from typing import TYPE_CHECKING, Any
 
 from pika import DeliveryMode
-from pika.spec import BasicProperties
 from pika.exceptions import (
     AMQPConnectionError,
     ChannelClosed,
@@ -17,6 +11,7 @@ from pika.exceptions import (
     ConnectionClosed,
     StreamLostError,
 )
+from pika.spec import BasicProperties
 
 from django_rmq.connections import get_connection_manager
 from django_rmq.queues.queue_config import QueueConfig
@@ -25,8 +20,9 @@ logger = logging.getLogger('rabbitmq')
 
 if TYPE_CHECKING:
     from pika.adapters.blocking_connection import BlockingChannel
+    from pika.spec import Basic
 
-    MessageCallback = Callable[['BlockingChannel', 'Basic.Deliver', 'BasicProperties', bytes], None]
+    MessageCallback = Callable[[BlockingChannel, Basic.Deliver, BasicProperties, bytes], None]
 
 _RECONNECTABLE_ERRORS = (
     AMQPConnectionError,
@@ -40,97 +36,98 @@ _RECONNECTABLE_ERRORS = (
 
 class Producer:
     """
-    Публикует сообщения в RabbitMQ через thread-local блокирующий канал.
+    Publishes messages to RabbitMQ through a thread-local blocking channel.
 
-    Экземпляр привязан к конкретной связке exchange + queue: оба параметра
-    задаются один раз при создании и используются во всех публикациях.
-    Пустая строка в `exchange` означает обменник по умолчанию (direct).
+    An instance is bound to a specific exchange + queue pair: both are set
+    once at creation and used for every publish. An empty string in
+    `exchange` means the default (direct) exchange.
 
-    Очередь объявляется лениво — только при первой публикации, а не при
-    создании объекта. Это позволяет создавать Producer заранее (например,
-    на уровне модуля) без активного соединения с брокером. Флаг
-    `_is_queue_declared` гарантирует, что `queue_declare` вызывается не
-    более одного раза на время жизни экземпляра.
+    The queue is declared lazily — only on the first publish, not when the
+    object is created. This allows creating a Producer ahead of time (e.g.
+    at module level) without an active connection to the broker. The
+    `_is_queue_declared` flag guarantees that `queue_declare` is called at
+    most once per instance lifetime.
 
-    При разрыве канала или соединения (исключения из `_RECONNECTABLE_ERRORS`)
-    делается ровно одна повторная попытка с новым каналом. Если повтор тоже
-    провалился — исключение пробрасывается выше.
+    When the channel or connection drops (exceptions from
+    `_RECONNECTABLE_ERRORS`), exactly one retry is made with a new channel.
+    If the retry also fails, the exception propagates upward.
 
-    Экземпляр можно использовать как декоратор (`@producer`): тогда он
-    автоматически публикует возвращаемое значение обёрнутой функции.
+    An instance can be used as a decorator (`@producer`): it then
+    automatically publishes the return value of the wrapped function.
     """
 
     def __init__(
         self,
         exchange: str = '',
-        queue: Union[QueueConfig, str] = '',
-        using: Optional[str] = None,
+        queue: QueueConfig | str = '',
+        using: str | None = None,
     ) -> None:
         """
-        Инициализирует Producer.
+        Initializes the Producer.
 
-        :param exchange: Имя обменника RabbitMQ. Пустая строка — обменник по умолчанию.
-        :param queue: Конфигурация очереди (QueueConfig) или её имя строкой. Используется
-                      как routing_key по умолчанию и объявляется на брокере при первой
-                      публикации. Если передана пустая строка — объявление очереди
-                      пропускается (режим работы только через exchange с явным routing_key).
-        :param using: Alias соединения из `RABBITMQ_CONNECTIONS`. Если сконфигурировано
-                      ровно одно соединение — можно опустить. При нескольких — обязателен.
+        :param exchange: RabbitMQ exchange name. An empty string is the default exchange.
+        :param queue: Queue configuration (QueueConfig) or its name as a string. Used as
+                      the default routing_key and declared on the broker on the first
+                      publish. If an empty string is passed, queue declaration is
+                      skipped (exchange-only mode with an explicit routing_key).
+        :param using: Connection alias from `RABBITMQ_CONNECTIONS`. May be omitted when
+                      exactly one connection is configured. Required when there are several.
         """
         self.exchange: str = exchange
         self.queue: str = str(queue)
-        self._queue_config: Union[QueueConfig, str] = queue
-        self._using: Optional[str] = using
-        # Флаг ленивого объявления: True после первого успешного queue_declare.
+        self._queue_config: QueueConfig | str = queue
+        self._using: str | None = using
+        # Lazy-declaration flag: True after the first successful queue_declare.
         self._is_queue_declared: bool = False
 
     def publish(
         self,
-        body: Union[str, bytes],
-        routing_key: Optional[str] = None,
-        properties: Optional[BasicProperties] = None,
+        body: str | bytes,
+        routing_key: str | None = None,
+        properties: BasicProperties | None = None,
     ) -> None:
         """
-        Публикует сообщение в RabbitMQ.
+        Publishes a message to RabbitMQ.
 
-        Метод — основная точка входа для отправки сообщений. Он выполняет
-        подготовку тела и свойств сообщения, а затем делегирует фактическую
-        отправку методу `_publish_once`. При сетевых ошибках автоматически
-        сбрасывает кешированный канал и повторяет попытку ровно один раз.
+        This method is the main entry point for sending messages. It prepares
+        the message body and properties, then delegates the actual send to
+        `_publish_once`. On network errors it automatically resets the cached
+        channel and retries exactly once.
 
-        Подготовка тела:
-            - Если `body` — строка, она кодируется в bytes (UTF-8).
-            - Pika требует bytes; строки не принимаются напрямую.
+        Body preparation:
+            - If `body` is a string, it is encoded to bytes (UTF-8).
+            - Pika requires bytes; strings are not accepted directly.
 
-        Подготовка свойств:
-            - Если `properties` не передан — создаётся с `delivery_mode=2`
-              (персистентное сообщение) и `content_type='application/json'`.
-            - Если `properties` передан, но `delivery_mode` не выставлен —
-              принудительно устанавливается `delivery_mode=2`. Это гарантирует,
-              что сообщение сохранится на диске брокера и переживёт его перезапуск.
+        Properties preparation:
+            - If `properties` is not passed, it is created with `delivery_mode=2`
+              (persistent message) and `content_type='application/json'`.
+            - If `properties` is passed but `delivery_mode` is unset, it is
+              forced to `delivery_mode=2`. This guarantees the message is stored
+              on the broker's disk and survives a broker restart.
 
-        Логика повтора:
-            - Первая попытка выполняется через существующий thread-local канал.
-            - При исключении из `_RECONNECTABLE_ERRORS` канал считается мёртвым:
-              вызывается `connection_manager.reset_producer_channel()` для удаления кеша, после чего
-              делается вторая и последняя попытка с новым каналом.
-            - Любые другие исключения пробрасываются немедленно без повтора.
+        Retry logic:
+            - The first attempt uses the existing thread-local channel.
+            - On an exception from `_RECONNECTABLE_ERRORS` the channel is
+              considered dead: `connection_manager.reset_producer_channel()` is
+              called to drop the cache, then a second and final attempt is made
+              with a new channel.
+            - Any other exception propagates immediately without a retry.
 
-        :param body: Тело сообщения в виде строки или байтов.
-        :param routing_key: Ключ маршрутизации. Если не передан, используется
-                            `self.queue` (имя очереди).
-        :param properties: AMQP-свойства сообщения. Если не переданы — формируются
-                           с персистентным режимом доставки.
+        :param body: Message body as a string or bytes.
+        :param routing_key: Routing key. If not passed, `self.queue` (the queue
+                            name) is used.
+        :param properties: AMQP message properties. If not passed, they are
+                           built with persistent delivery mode.
         """
         source: str = 'Producer.publish'
-        # Явный routing_key имеет приоритет; иначе используем имя очереди.
+        # An explicit routing_key takes priority; otherwise use the queue name.
         effective_routing_key: str = routing_key if routing_key is not None else self.queue
         if isinstance(body, str):
             body = body.encode()
 
-        # delivery_mode=2 — персистентное сообщение: сохраняется на диск брокера.
-        # Durable-очереди сами по себе не спасают сообщения при перезапуске брокера
-        # без этого флага.
+        # delivery_mode=2 — persistent message: stored on the broker's disk.
+        # Durable queues alone do not save messages across a broker restart
+        # without this flag.
         properties = properties or BasicProperties(content_type='application/json')
         if properties.delivery_mode is None:
             properties.delivery_mode = DeliveryMode.Persistent.value
@@ -155,9 +152,9 @@ class Producer:
                     properties=properties,
                 )
             except _RECONNECTABLE_ERRORS as exc:
-                # Канал или соединение разорваны — сбрасываем кешированный канал
-                # и делаем ровно одну повторную попытку. Если повтор тоже упадёт,
-                # исключение улетит во внешний except и будет залогировано там.
+                # The channel or connection is broken — reset the cached channel
+                # and make exactly one retry. If the retry also fails, the
+                # exception flies to the outer except and is logged there.
                 logger.warning(
                     {
                         'source': source,
@@ -196,25 +193,25 @@ class Producer:
         properties: BasicProperties,
     ) -> None:
         """
-        Выполняет одну попытку публикации сообщения через thread-local канал.
+        Performs a single attempt to publish a message through the thread-local channel.
 
-        Метод намеренно не содержит логики повтора — он делает ровно один вызов
-        `basic_publish` и пробрасывает любое исключение наверх, в `publish`,
-        который решает, нужно ли переподключаться и повторять.
+        The method intentionally contains no retry logic — it makes exactly one
+        `basic_publish` call and propagates any exception up to `publish`, which
+        decides whether to reconnect and retry.
 
-        Перед публикацией вызывается `_ensure_queue_declared`, чтобы убедиться,
-        что очередь существует на брокере (лениво, только при первом вызове).
+        Before publishing, `_ensure_queue_declared` is called to make sure the
+        queue exists on the broker (lazily, only on the first call).
 
-        Флаг `mandatory=True` заставляет брокер вернуть сообщение обратно
-        (через `basic.return`), если ни одна очередь не соответствует routing_key,
-        вместо того чтобы молча его потерять.
+        The `mandatory=True` flag makes the broker return the message back
+        (via `basic.return`) if no queue matches the routing_key, instead of
+        silently dropping it.
 
-        :param body: Тело сообщения в байтах.
-        :param routing_key: Ключ маршрутизации.
-        :param properties: AMQP-свойства сообщения.
+        :param body: Message body in bytes.
+        :param routing_key: Routing key.
+        :param properties: AMQP message properties.
         """
-        # Получаем thread-local канал (создаётся или переиспользуется).
-        channel: 'BlockingChannel' = get_connection_manager(using=self._using).get_producer_channel()
+        # Get the thread-local channel (created or reused).
+        channel: BlockingChannel = get_connection_manager(using=self._using).get_producer_channel()
         self._ensure_queue_declared(channel=channel)
         channel.basic_publish(
             exchange=self.exchange,
@@ -226,21 +223,21 @@ class Producer:
 
     def _ensure_queue_declared(self, channel: 'BlockingChannel') -> None:
         """
-        Проверяет существование очереди на брокере при первом вызове (passive-режим).
+        Checks that the queue exists on the broker on the first call (passive mode).
 
-        Метод идемпотентен в рамках жизни экземпляра: после первого успешного
-        объявления флаг `_is_queue_declared` выставляется в True, и последующие
-        вызовы немедленно возвращаются без обращения к брокеру.
+        The method is idempotent over the instance lifetime: after the first
+        successful declaration the `_is_queue_declared` flag is set to True, and
+        subsequent calls return immediately without contacting the broker.
 
-        Если `self.queue` пустая строка (режим работы только через exchange),
-        метод ничего не делает.
+        If `self.queue` is an empty string (exchange-only mode), the method
+        does nothing.
 
-        Используется passive=True: брокер возвращает текущее состояние очереди
-        без попытки её создать или изменить. Это позволяет продюсеру публиковать
-        в очереди с любыми аргументами (например, x-dead-letter-exchange),
-        объявленными через setup_rabbitmq, не вступая с ними в конфликт.
+        passive=True is used: the broker returns the queue's current state
+        without trying to create or modify it. This lets the producer publish
+        to queues with any arguments (e.g. x-dead-letter-exchange) declared
+        via setup_rabbitmq, without conflicting with them.
 
-        :param channel: Активный AMQP-канал, через который выполняется проверка.
+        :param channel: The active AMQP channel used for the check.
         """
         if not self.queue or self._is_queue_declared:
             return
@@ -254,33 +251,34 @@ class Producer:
             channel.queue_declare(queue=self.queue, passive=True)
         self._is_queue_declared = True
 
-    def __call__(self, func: Callable[..., Union[str, bytes, None]]) -> Callable[..., Union[str, bytes, None]]:
+    def __call__(self, func: Callable[..., str | bytes | None]) -> Callable[..., str | bytes | None]:
         """
-        Позволяет использовать экземпляр Producer как декоратор функции.
+        Allows using a Producer instance as a function decorator.
 
-        Обёртывает функцию так, что её возвращаемое значение автоматически
-        публикуется в очередь через `self.publish`. Это позволяет декларативно
-        связать бизнес-логику с отправкой сообщений без явного вызова `publish`
-        внутри функции:
+        Wraps the function so that its return value is automatically published
+        to the queue via `self.publish`. This lets you declaratively tie
+        business logic to message sending without an explicit `publish` call
+        inside the function:
 
             @producer
             def build_event(...) -> str:
                 return json.dumps({...})
 
-        Контракт возвращаемого значения:
-            - `str` или `bytes` — публикуется и возвращается вызывающему.
-            - `None` — публикация пропускается; функция «решила не отправлять».
-            - Любой другой тип — выбрасывается `TypeError`. Декоратор намеренно
-              строг: молчаливая сериализация dict/list скрывает ошибки контракта.
+        Return-value contract:
+            - `str` or `bytes` — published and returned to the caller.
+            - `None` — publishing is skipped; the function "chose not to send".
+            - Any other type — `TypeError` is raised. The decorator is
+              intentionally strict: silent serialization of dict/list hides
+              contract errors.
 
-        :param func: Декорируемая функция. Должна возвращать `str`, `bytes` или `None`.
-        :return: Обёрнутая функция с той же сигнатурой, именем и docstring.
+        :param func: The decorated function. Must return `str`, `bytes`, or `None`.
+        :return: The wrapped function with the same signature, name, and docstring.
         """
         source: str = 'Producer.__call__'
 
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Union[str, bytes, None]:
-            result: Union[str, bytes, None] = func(*args, **kwargs)
+        def wrapper(*args: Any, **kwargs: Any) -> str | bytes | None:
+            result: str | bytes | None = func(*args, **kwargs)
             if result is None:
                 return None
 

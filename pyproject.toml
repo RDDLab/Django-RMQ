@@ -45,13 +45,13 @@ dependencies = [
     "django>=4.2",
     "pika==1.4.1",
     "pika-stubs==0.1.3",
+    "ruff>=0.14.0",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
-    "pylint>=4.0.5",
-    "pylint_django>=2.7.0",
+    "ruff>=0.14.0",
 ]
 
 [project.urls]
