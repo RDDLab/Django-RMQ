@@ -51,8 +51,19 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
+    "pytest-django>=4.9.0",
+    "pytest-mock>=3.14.0",
+    "pytest-cov>=6.0.0",
     "ruff>=0.14.0",
 ]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+testpaths = ["tests"]
+markers = [
+    "integration: tests that require a real RabbitMQ broker (deselected by default)",
+]
+addopts = "-ra"
 
 [project.urls]
 Homepage = "https://django-rmq.rdd-lab.com/"
