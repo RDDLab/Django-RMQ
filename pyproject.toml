@@ -63,7 +63,7 @@ testpaths = ["tests"]
 markers = [
     "integration: tests that require a real RabbitMQ broker (deselected by default)",
 ]
-addopts = "-ra"
+addopts = '-ra -m "not integration"'
 
 [project.urls]
 Homepage = "https://django-rmq.rdd-lab.com/"
