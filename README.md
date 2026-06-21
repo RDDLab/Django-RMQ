@@ -11,7 +11,7 @@
 
 ---
 
-[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-4%2B-blue?style=for-the-badge)](https://www.rabbitmq.com/)
+[![RabbitMQ Support](https://img.shields.io/static/v1?label=RabbitMQ%20Support&message=v3.13%20%7C%20v4.0%20%7C%20v4.1%20%7C%20v4.2%20%7C%20v4.3&color=ff6600&labelColor=555&style=for-the-badge)](https://www.rabbitmq.com/)
 
 ---
 
