@@ -71,6 +71,7 @@ Repository = "https://github.com/RDDLab/Django-RMQ"
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["django_rmq*"]
 
 [tool.setuptools.package-data]
-"*" = ["py.typed"]
+"django_rmq" = ["py.typed"]
