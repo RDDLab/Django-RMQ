@@ -37,3 +37,31 @@ You can install Django-RMQ with pip or your favorite Python dependency manager:
 ```bash
 pip install django-rmq
 ```
+
+## Testing
+
+### Unit tests
+
+Unit tests mock `pika` and need no broker. They run by default — integration
+tests are marked `integration` and deselected:
+
+```bash
+uv run pytest
+```
+
+### Integration tests
+
+Integration tests run against a **real** RabbitMQ broker. The repo ships a
+`.github/docker-compose.yml` that starts the same image CI uses (with the
+management plugin the suite needs on port `15672`). Connection params are read
+from `RMQ_*` env vars (defaults: `localhost:5672`, `guest`/`guest`, vhost `/`),
+which already match the Compose service:
+
+```bash
+docker compose -f .github/docker-compose.yml up -d --wait    # start the broker, block until healthy
+uv run pytest -m integration
+docker compose -f .github/docker-compose.yml down            # stop it when done
+```
+
+The suite isolates itself with per-test `uuid`-suffixed queues/exchanges and
+cleans them up, so it is safe against a shared broker (use a dedicated vhost).
