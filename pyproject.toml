@@ -59,6 +59,7 @@ dev = [
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "tests.settings"
+pythonpath = ["."]
 testpaths = ["tests"]
 markers = [
     "integration: tests that require a real RabbitMQ broker (deselected by default)",
