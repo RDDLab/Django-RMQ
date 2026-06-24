@@ -94,6 +94,7 @@ jobs:
           # Force-remove any RabbitMQ containers left on the runner
           docker ps -aq --filter "ancestor=rabbitmq:${{ matrix.rabbitmq-version }}-management-alpine" \
             | xargs -r docker rm -fv
+          docker image rm -f "rabbitmq:${{ matrix.rabbitmq-version }}-management-alpine" || true
           # Wipe per-run Python/pytest build artifacts from the persistent workspace.
           rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
           find . -type d -name "__pycache__" -prune -exec rm -rf {} +
