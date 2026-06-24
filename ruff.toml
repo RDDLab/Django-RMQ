@@ -27,6 +27,10 @@ ignore = [
 
 [lint.per-file-ignores]
 "apps.py" = ["F401"]
+"tests/*" = [
+    "PLR2004", # magic value in comparison — expected in assertions
+    "PLW0108", # lambda may be unnecessary — concise test stubs
+]
 
 [lint.flake8-tidy-imports]
 ban-relative-imports = "all"

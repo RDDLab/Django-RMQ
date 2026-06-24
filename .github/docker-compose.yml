@@ -1,0 +1,12 @@
+services:
+  rabbitmq:
+    image: rabbitmq:4.3.1-management-alpine
+    container_name: django-rmq-test
+    ports:
+      - "5672:5672"    # AMQP — RMQ_PORT
+      - "15672:15672"  # Management HTTP API — RMQ_MGMT_PORT (used by the suite)
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10

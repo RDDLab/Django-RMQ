@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+
+  # Unit tests across the supported Python versions
+  unit-test:
+    runs-on: self-hosted
+
+    strategy:
+      matrix:
+        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+      fail-fast: true
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --group dev --python ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: uv run --python ${{ matrix.python-version }} pytest
+
+      - name: Clean up runner artifacts
+        if: always()
+        run: |
+          rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
+          find . -type d -name "__pycache__" -prune -exec rm -rf {} +
+
+  # Integration tests against a real RabbitMQ broker (deselected in the unit job)
+  integration-test:
+    runs-on: self-hosted
+
+    strategy:
+      matrix:
+        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        rabbitmq-version: [ "3.13", "4.0", "4.1", "4.2", "4.3" ]
+      fail-fast: true
+
+    services:
+      rabbitmq:
+        image: rabbitmq:${{ matrix.rabbitmq-version }}-management-alpine
+        ports:
+          - 5672:5672
+          - 15672:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      RMQ_HOST: localhost
+      RMQ_PORT: 5672
+      RMQ_MGMT_PORT: 15672
+      RMQ_USER: guest
+      RMQ_PASSWORD: guest
+      RMQ_VHOST: /
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --group dev --python ${{ matrix.python-version }}
+
+      - name: Run integration tests
+        run: uv run --python ${{ matrix.python-version }} pytest -m integration
+
+      - name: Tear down RabbitMQ and clean up runner artifacts
+        if: always()
+        run: |
+          # Force-remove any RabbitMQ containers left on the runner
+          docker ps -aq --filter "ancestor=rabbitmq:${{ matrix.rabbitmq-version }}-management-alpine" \
+            | xargs -r docker rm -fv
+          docker image rm -f "rabbitmq:${{ matrix.rabbitmq-version }}-management-alpine" || true
+          # Wipe per-run Python/pytest build artifacts from the persistent workspace.
+          rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
+          find . -type d -name "__pycache__" -prune -exec rm -rf {} +

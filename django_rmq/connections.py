@@ -28,7 +28,7 @@ class RabbitMQConnectionManager:
     Manages thread-local connections and the producer channel for RabbitMQ.
 
     Producer and Consumer get *separate* BlockingConnections per thread.
-    A pika BlockingConnection is owned by exactly one I/O loop; while
+    Exactly one I/O loop owns a pika BlockingConnection; while
     Consumer.consume() drives that loop via process_data_events(), any
     concurrent operation on the same connection — whether a publish()
     from a handler or a heartbeat from another thread — corrupts the AMQP
