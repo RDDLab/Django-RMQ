@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from enum import Enum
 
 from django.utils.termcolors import make_style
@@ -18,17 +18,17 @@ class CommandStyle(Enum):
     BOLD_GREEN = (('bold',), 'green')
     BOLD_CYAN = (('bold',), 'cyan')
 
-    def __init__(self, opts: tuple[str, ...], fg: str | None) -> None:
+    def __init__(self, opts: Sequence[str], fg: str | None) -> None:
         """
         Builds the style callable for this member.
 
         :param opts: Display options passed to `make_style` (e.g. `('bold',)`).
         :param fg: Foreground color name, or None to leave the color unset.
         """
-        style_kwargs: dict[str, object] = {'opts': opts}
         if fg is not None:
-            style_kwargs['fg'] = fg
-        self._style: Callable[[str], str] = make_style(**style_kwargs)
+            self._style: Callable[[str], str] = make_style(opts=opts, fg=fg)
+        else:
+            self._style = make_style(opts=opts)
 
     def apply(self, text: str) -> str:
         """

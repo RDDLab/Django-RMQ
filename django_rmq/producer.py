@@ -3,7 +3,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import TYPE_CHECKING, Any
 
-from pika import DeliveryMode
+from pika.delivery_mode import DeliveryMode
 from pika.exceptions import (
     AMQPConnectionError,
     ChannelClosed,

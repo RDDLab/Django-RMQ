@@ -56,6 +56,8 @@ class RecordingChannel(_ChannelBase):
         """
         return getattr(self._channel, name)
 
+    # Signature is intentionally simplified vs `BlockingChannel`; this is a recording proxy.
+    # pyrefly: ignore[bad-override]
     def exchange_declare(self, exchange: str = '', exchange_type: str = ExchangeType.direct, **kwargs: Any) -> Any:
         """
         Records the exchange declaration and forwards it to the real channel.
@@ -68,6 +70,8 @@ class RecordingChannel(_ChannelBase):
         self.exchanges.append({'name': exchange, 'type': exchange_type})
         return self._channel.exchange_declare(exchange=exchange, exchange_type=exchange_type, **kwargs)
 
+    # Signature is intentionally simplified vs `BlockingChannel`; this is a recording proxy.
+    # pyrefly: ignore[bad-override]
     def queue_declare(self, queue: str = '', **kwargs: Any) -> Any:
         """
         Records the queue declaration and forwards it to the real channel.
@@ -80,6 +84,8 @@ class RecordingChannel(_ChannelBase):
         self.queues.append({'name': queue, 'arguments': kwargs.get('arguments')})
         return self._channel.queue_declare(queue=queue, **kwargs)
 
+    # Signature is intentionally simplified vs `BlockingChannel`; this is a recording proxy.
+    # pyrefly: ignore[bad-override]
     def queue_bind(self, queue: str, exchange: str, routing_key: str | None = None, **kwargs: Any) -> Any:
         """
         Records the queue binding and forwards it to the real channel.
@@ -116,7 +122,7 @@ class Command(RDDBaseCommand):
             help='Connection alias from RABBITMQ_CONNECTIONS to set up. If omitted, runs for every alias.',
         )
 
-    def handle(self, *args, **kwargs) -> None:
+    def handle(self, *args: Any, **kwargs: Any) -> None:
         """
         Runs the topology setup for one or all aliases.
 
