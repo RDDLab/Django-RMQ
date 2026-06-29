@@ -12,7 +12,7 @@ jobs:
 
   # Run the full test suite (unit + integration) before publishing anything
   tests:
-    uses: ./.github/workflows/ci.yml
+    uses: ./.github/workflows/testing.yml
 
   # Assemble the package (once, py3-none-any)
   release-build:
