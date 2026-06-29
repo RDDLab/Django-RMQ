@@ -1,6 +1,7 @@
 import logging
 import signal
 import threading
+from typing import Any
 
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import CommandParser
@@ -61,7 +62,7 @@ class Command(RDDBaseCommand):
             help='Connection alias from RABBITMQ_CONNECTIONS to start. If omitted, starts consumers for every alias.',
         )
 
-    def handle(self, *args, **kwargs) -> None:
+    def handle(self, *args: Any, **kwargs: Any) -> None:
         """
         Starts the consumer threads for one or all aliases and waits for shutdown.
 

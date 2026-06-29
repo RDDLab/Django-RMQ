@@ -47,7 +47,7 @@ class RabbitMQConnectionManager:
                 password=config.password,
             ),
             heartbeat=config.heartbeat,
-            blocked_connection_timeout=config.blocked_connection_timeout,
+            blocked_connection_timeout=config.blocked_connection_timeout,  # pyrefly: ignore[bad-argument-type]
         )
         self._local: threading.local = threading.local()
 

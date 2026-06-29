@@ -1,4 +1,4 @@
-name: CI
+name: Testing Django-RMQ pipeline
 
 on:
   push:
@@ -12,6 +12,40 @@ permissions:
   contents: read
 
 jobs:
+
+  # Static analysis: linting/formatting (ruff) and type checking (pyrefly).
+  # Version-independent, so it runs once instead of across the full matrix.
+  # Pinned to the minimum supported Python (matching `python-version` in
+  # `[tool.pyrefly]`) so the lint environment mirrors the lowest target.
+  lint:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.10
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run ruff (lint)
+        run: uv run ruff check .
+
+      - name: Run ruff (format check)
+        run: uv run ruff format --check .
+
+      - name: Run pyrefly (type check)
+        run: uv run pyrefly check
+
+      - name: Clean up runner artifacts
+        if: always()
+        run: |
+          rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
+          find . -type d -name "__pycache__" -prune -exec rm -rf {} +
 
   # Unit tests across the supported Python versions
   unit-test:

@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=for-the-badge)](https://docs.astral.sh/ruff)
+[![pyrefly](https://img.shields.io/endpoint?url=https://pyrefly.org/badge.json&style=for-the-badge)](https://pyrefly.org)
 [![PyPI](https://img.shields.io/pypi/v/django-rmq?style=for-the-badge)](https://pypi.org/project/django-rmq/)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/django-rmq.svg?style=for-the-badge)](https://pypi.python.org/pypi/django-rmq/)
 [![PyPI djversions](https://img.shields.io/pypi/djversions/django-rmq.svg?style=for-the-badge)](https://pypi.org/project/django-rmq/)
