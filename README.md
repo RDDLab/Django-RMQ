@@ -9,7 +9,7 @@
 [![PyPI status](https://img.shields.io/pypi/status/django-rmq.svg?style=for-the-badge)](https://pypi.python.org/pypi/django-rmq)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/django-rmq?style=for-the-badge)](https://pypistats.org/packages/django-rmq)
 [![PyPI - Types](https://img.shields.io/pypi/types/django-rmq.svg?style=for-the-badge)](https://pypi.python.org/pypi/django-rmq)
-[![Tests](https://github.com/RDDLab/Django-RMQ/actions/workflows/ci.yml/badge.svg?branch=main&style=for-the-badge)](https://github.com/RDDLab/Django-RMQ/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/RDDLab/Django-RMQ/testing.yml?branch=main&label=Tests&style=for-the-badge)](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml)
 
 ---
 
