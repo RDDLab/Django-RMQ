@@ -84,6 +84,7 @@ addopts = '-ra -m "not integration"'
 Homepage = "https://django-rmq.rdd-lab.com/"
 Issues = "https://github.com/RDDLab/Django-RMQ/issues"
 Repository = "https://github.com/RDDLab/Django-RMQ"
+Changelog = "https://github.com/RDDLab/Django-RMQ/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]
