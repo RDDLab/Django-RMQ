@@ -1,4 +1,4 @@
-![Logo](docs/.vuepress/public/logo.png)
+![Logo](https://github.com/RDDLab/Django-RMQ/raw/main/docs/.vuepress/public/logo.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=for-the-badge)](https://docs.astral.sh/ruff)
