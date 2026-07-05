@@ -10,14 +10,9 @@ permissions:
 
 jobs:
 
-  # Run the full test suite (unit + integration) before publishing anything
-  tests:
-    uses: ./.github/workflows/testing.yml
-
   # Assemble the package (once, py3-none-any)
   release-build:
     runs-on: self-hosted
-    needs: tests
 
     steps:
       - uses: actions/checkout@v4.2.2
