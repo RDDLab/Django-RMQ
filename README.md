@@ -9,7 +9,7 @@
 [![PyPI status](https://img.shields.io/pypi/status/django-rmq.svg?style=for-the-badge)](https://pypi.python.org/pypi/django-rmq)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/django-rmq?style=for-the-badge)](https://pypistats.org/packages/django-rmq)
 [![PyPI - Types](https://img.shields.io/pypi/types/django-rmq.svg?style=for-the-badge)](https://pypi.python.org/pypi/django-rmq)
-[![Tests](https://img.shields.io/github/actions/workflow/status/RDDLab/Django-RMQ/testing.yml?branch=main&label=Tests&style=for-the-badge)](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml)
+[![Tests](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml/badge.svg?branch=main)](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml)
 
 ---
 
@@ -25,8 +25,96 @@
 
 # Django-RMQ
 
-TODO ...
+Django-RMQ provides RabbitMQ wrappers and tools for Django projects, built on top of [Pika](https://pika.readthedocs.io/). It is a lightweight integration layer — not a task queue or a Celery replacement — for projects that need to publish and consume messages while keeping broker infrastructure code predictable and close to the Django configuration. Supports RabbitMQ 3.13–4.3.
 
+## Features
+
+- **Django-native settings** — configure broker connections via `RABBITMQ_CONNECTIONS` in `settings.py`, one entry per alias.
+- **`Producer` and `Consumer` wrappers** — thin classes over Pika's blocking connection that handle channel lifecycle and lazy queue declaration.
+- **Decorator-style publishing** — use a `Producer` instance as a `@producer` decorator to auto-publish a function's return value.
+- **Reliable delivery** — publisher confirms, `mandatory=True`, and `delivery_mode=2` (persistent) are enforced on every message.
+- **Auto-reconnect with backoff** — producers retry once on transient channel errors; consumers reconnect with exponential backoff capped at a configurable maximum.
+- **Dead-letter routing** — declare queues with `QueueConfig(dead_letter_exchange=...)` so unhandled messages are nacked without requeue and routed to a DLX.
+- **Management commands** — `setup_rabbitmq_topology` (idempotent exchange/queue/binding setup) and `start_consumers` (threaded runner with graceful SIGTERM/SIGINT shutdown).
+- **Multiple connections** — configure several broker aliases and select per producer/consumer via `using=`.
+- **Fully typed** — ships `py.typed`; compatible with pyrefly and standard type checkers.
+
+## Installation
+
+```bash
+pip install django-rmq
+```
+
+Add `'django_rmq'` to `INSTALLED_APPS` and configure at least one connection alias:
+
+```python
+INSTALLED_APPS = [
+    # ...
+    'django_rmq',
+]
+
+RABBITMQ_CONNECTIONS = {
+    'default': {
+        'HOST': 'localhost',
+        'PORT': 5672,
+        'VIRTUAL_HOST': '/',
+        'USER': 'guest',
+        'PASSWORD': 'guest',
+        'HEARTBEAT': 600,
+        'BLOCKED_CONNECTION_TIMEOUT': 300,
+        'RECONNECT_INITIAL_BACKOFF': 1.0,
+        'RECONNECT_MAX_BACKOFF': 30.0,
+    },
+}
+```
+
+## Quick start
+
+**Publish a message:**
+
+```python
+from django_rmq.producer import Producer
+
+Producer(queue='orders').publish(body='{"order_id": 42}')
+```
+
+**Consume messages** (e.g. `myapp/consumers.py`):
+
+```python
+from pika.adapters.blocking_connection import BlockingChannel
+from pika.spec import Basic, BasicProperties
+
+from django_rmq.consumer import Consumer
+from django_rmq.registries.registry import get_consumers_registry
+
+consumer: Consumer = Consumer(queue='orders')
+
+
+@consumer
+def handle_order(
+    ch: BlockingChannel,
+    method: Basic.Deliver,
+    props: BasicProperties,
+    body: bytes,
+) -> None:
+    print(body)
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
+
+get_consumers_registry().register(consumer=consumer)
+```
+
+Import `consumers.py` inside your app's `AppConfig.ready()`, then start consuming:
+
+```bash
+uv run python manage.py start_consumers
+```
+
+## Documentation
+
+Full reference, configuration guide, reliability details, and more:
+
+**https://django-rmq.rdd-lab.com/**
 
 ---
 
@@ -59,3 +147,7 @@ The suite isolates itself with per-test `uuid`-suffixed queues/exchanges and
 cleans them up, so it is safe against a shared broker (use a dedicated vhost).
 
 ---
+
+## License
+
+MIT
