@@ -203,9 +203,7 @@ class TestCheckConnectionsCommand:
         with pytest.raises(CommandError, match='default'):
             call_command(CHECK_COMMAND)
 
-    def test_not_initialized_raises_improperly_configured(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_not_initialized_raises_improperly_configured(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # reset_rmq_state (autouse) rebuilds the managers after the test.
         monkeypatch.setattr(django_rmq, 'connection_managers', None)
 
