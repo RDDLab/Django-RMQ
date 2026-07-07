@@ -17,6 +17,8 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/RDDLab/Django-RMQ/testing.yml?branch=main&label=Tests)](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13524/badge)](https://www.bestpractices.dev/projects/13524)
 [![Codecov](https://img.shields.io/codecov/c/github/RDDLab/Django-RMQ/main?logo=codecov)](https://codecov.io/gh/RDDLab/Django-RMQ)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/RDDLab/Django-RMQ/main.svg)](https://results.pre-commit.ci/latest/github/RDDLab/Django-RMQ/main)
+
 ---
 
 **Documentation**: <a href="https://django-rmq.rdd-lab.com/" target="_blank">https://django-rmq.rdd-lab.com/</a>

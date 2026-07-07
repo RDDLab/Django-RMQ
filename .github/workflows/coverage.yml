@@ -48,4 +48,3 @@ jobs:
         run: |
           rm -rf .venv .pytest_cache .ruff_cache .coverage coverage.xml htmlcov
           find . -type d -name "__pycache__" -prune -exec rm -rf {} +
-

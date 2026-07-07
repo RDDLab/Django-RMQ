@@ -1,0 +1,159 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "en-US"
+early_access: false
+enable_free_tier: true
+
+tone_instructions: >
+  Be concise, practical, and respectful. Prioritize correctness, security,
+  public API compatibility, backward compatibility, and test coverage. Avoid
+  nitpicks when an existing formatter or linter already covers the issue.
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  review_status: true
+  review_details: true
+  commit_status: true
+  fail_commit_status: false
+  collapse_walkthrough: true
+  changed_files_summary: true
+  sequence_diagrams: false
+  estimate_code_review_effort: true
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  suggested_labels: true
+  auto_apply_labels: false
+  suggested_reviewers: false
+  auto_assign_reviewers: false
+  in_progress_fortune: false
+  poem: false
+  enable_prompt_for_ai_agents: false
+
+  path_filters:
+    - "!**/.venv/**"
+    - "!**/.pytest_cache/**"
+    - "!**/.ruff_cache/**"
+    - "!**/__pycache__/**"
+    - "!docs/.vuepress/dist/**"
+    - "!coverage.xml"
+    - "!htmlcov/**"
+    - "!*.lock"
+    - "!package-lock.json"
+    - "!*.png"
+    - "!*.jpg"
+    - "!*.jpeg"
+    - "!*.svg"
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    ignore_title_keywords:
+      - "WIP"
+      - "Draft"
+      - "DO NOT MERGE"
+    ignore_usernames:
+      - "dependabot[bot]"
+
+  path_instructions:
+    - path: "django_rmq/**/*.py"
+      instructions: |
+        Review this as a reusable open-source Django/RabbitMQ library.
+        Focus on:
+        - public API compatibility and backward compatibility;
+        - Django app lifecycle and settings behavior;
+        - RabbitMQ/Pika connection lifecycle, retries, acknowledgements, publisher confirms, mandatory publishing, and dead-letter behavior;
+        - thread-safety and resource cleanup;
+        - clear, typed Python code that matches the existing style;
+        - meaningful tests for behavior changes.
+        Do not suggest Celery-style abstractions unless the change explicitly needs them.
+
+    - path: "tests/**/*.py"
+      instructions: |
+        Review tests for behavior coverage, regression value, and realistic RabbitMQ/Django scenarios.
+        Unit tests should stay broker-free unless marked as integration.
+        Integration tests may require RabbitMQ and should keep queues/exchanges isolated and cleaned up.
+        Avoid suggesting broad snapshot-style tests.
+
+    - path: "tests/integration/**/*.py"
+      instructions: |
+        Pay special attention to broker cleanup, unique queue/exchange names, timing assumptions, reconnect behavior, and test isolation.
+        Flag flaky sleeps, shared broker state, or assumptions that can fail on CI.
+
+    - path: ".github/workflows/**/*.yml"
+      instructions: |
+        Review GitHub Actions for least-privilege permissions, reusable workflow permission inheritance,
+        pinned action versions, self-hosted runner cleanup, and secrets/OIDC handling.
+        Flag workflows that can fail validation before runtime.
+
+    - path: "docs/**/*.md"
+      instructions: |
+        Review documentation for correctness, clarity, and consistency between English and Russian docs.
+        Flag stale commands, outdated supported versions, and examples that do not match the code.
+
+    - path: "pyproject.toml"
+      instructions: |
+        Review package metadata, supported Python/Django classifiers, dependency bounds, pytest settings,
+        and type/lint configuration. Flag dependency changes that can break supported Python versions.
+
+    - path: "uv.lock"
+      instructions: |
+        This is a generated lock file. Only flag suspicious dependency changes, security risks,
+        or lockfile drift that does not match pyproject.toml.
+
+  tools:
+    github-checks:
+      enabled: true
+      timeout_ms: 900000
+    ruff:
+      enabled: true
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    yamllint:
+      enabled: true
+    markdownlint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    trufflehog:
+      enabled: true
+    checkov:
+      enabled: true
+    osvScanner:
+      enabled: true
+    flake8:
+      enabled: false
+    pylint:
+      enabled: false
+    eslint:
+      enabled: false
+    biome:
+      enabled: false
+    stylelint:
+      enabled: false
+    languagetool:
+      enabled: false
+
+chat:
+  auto_reply: true
+  art: false
+  allow_non_org_members: true
+
+knowledge_base:
+  web_search:
+    enabled: true
+
+code_generation:
+  docstrings:
+    language: "en-US"
+    path_instructions:
+      - path: "django_rmq/**/*.py"
+        instructions: |
+          Preserve the existing docstring style. Explain behavior, parameters,
+          return values, and exceptions without adding noise.
