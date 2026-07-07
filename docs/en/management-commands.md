@@ -5,7 +5,8 @@ order: 8
 
 # Management Commands
 
-Django-RMQ ships two management commands. Both extend `RDDBaseCommand`.
+Django-RMQ ships three management commands. `setup_rabbitmq_topology` and `start_consumers` extend
+`RDDBaseCommand`; `check_rabbitmq_connections` is a lightweight healthcheck that deliberately does not.
 
 ## `setup_rabbitmq_topology`
 
@@ -137,6 +138,61 @@ kill -TERM <pid>
 uv run python manage.py start_consumers --using analytics
 ```
 
+## `check_rabbitmq_connections`
+
+A healthcheck command that verifies RabbitMQ connectivity. For each alias it opens a producer connection and closes it
+immediately, reporting which aliases are reachable. The command exits non-zero if any connection fails, which makes it
+suitable for readiness/liveness probes.
+
+```bash
+uv run python manage.py check_rabbitmq_connections
+```
+
+### Options
+
+| Option    | Type  | Default | Description                                                                                                  |
+|-----------|-------|---------|--------------------------------------------------------------------------------------------------------------|
+| `--using` | `str` | `None`  | Connection alias from `RABBITMQ_CONNECTIONS` to check. When omitted, checks every configured alias.          |
+
+### What it does
+
+1. Verifies django_rmq is initialized — raises `ImproperlyConfigured` if `django_rmq` is not in `INSTALLED_APPS`.
+2. Resolves the list of aliases (`--using` selects one; otherwise all configured aliases).
+3. For each alias, opens a producer connection and closes it immediately:
+   - On success, prints `OK: <alias>` (bold green) to stdout.
+   - On failure (`AMQPError` or `OSError`), logs a warning and prints `FAIL: <alias>` to stderr.
+4. If any alias failed, raises `CommandError` (exit code 1) listing the unhealthy aliases.
+5. If all aliases are reachable, prints a final `ok: <aliases>` summary line.
+
+### Example output
+
+```
+  OK: default
+  OK: analytics
+ok: default, analytics
+```
+
+On failure:
+
+```
+  OK: default
+  FAIL: analytics
+CommandError: unhealthy: analytics
+```
+
+### Example: checking a specific alias
+
+```bash
+uv run python manage.py check_rabbitmq_connections --using analytics
+```
+
+### Exit codes
+
+| Code | Meaning                                                    |
+|------|------------------------------------------------------------|
+| `0`  | All checked aliases are reachable.                         |
+| `1`  | At least one alias is unreachable (raises `CommandError`). |
+
 ## Running in production
 
 A typical production setup runs `setup_rabbitmq_topology` once during deployment, then keeps `start_consumers` running
@@ -169,3 +225,12 @@ CMD ["uv", "run", "python", "manage.py", "start_consumers"]
 
 Run `setup_rabbitmq_topology` as a separate init container or deployment hook so topology is always declared before
 consumers try to bind to queues.
+
+Use `check_rabbitmq_connections` as a readiness/liveness probe — it exits non-zero when a broker is unreachable:
+
+```yaml
+livenessProbe:
+  exec:
+    command: ["uv", "run", "python", "manage.py", "check_rabbitmq_connections"]
+  periodSeconds: 30
+```

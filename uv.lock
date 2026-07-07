@@ -183,7 +183,7 @@ wheels = [
 
 [[package]]
 name = "django-rmq"
-version = "0.0.1"
+version = "1.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "django", version = "5.2.15", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -206,7 +206,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "django", specifier = ">=4.2" },
-    { name = "pika", specifier = "==1.4.1" },
+    { name = "pika", specifier = ">=1.4.1,<2.0" },
     { name = "pika-stubs", specifier = "==0.1.3" },
 ]
 

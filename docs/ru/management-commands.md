@@ -5,7 +5,8 @@ order: 8
 
 # Команды управления
 
-Django-RMQ поставляется с двумя командами управления. Обе расширяют `RDDBaseCommand`.
+Django-RMQ поставляется с тремя командами управления. `setup_rabbitmq_topology` и `start_consumers` расширяют
+`RDDBaseCommand`; `check_rabbitmq_connections` — это лёгкий healthcheck, который намеренно его не расширяет.
 
 ## `setup_rabbitmq_topology`
 
@@ -140,6 +141,62 @@ kill -TERM <pid>
 uv run python manage.py start_consumers --using analytics
 ```
 
+## `check_rabbitmq_connections`
+
+Команда-healthcheck, проверяющая доступность RabbitMQ. Для каждого алиаса открывает producer-соединение и сразу же
+закрывает его, сообщая, какие алиасы доступны. Команда завершается с ненулевым кодом, если хотя бы одно соединение установить не
+удалось, что делает её пригодной для readiness/liveness-проб.
+
+```bash
+uv run python manage.py check_rabbitmq_connections
+```
+
+### Параметры
+
+| Параметр  | Тип   | По умолчанию | Описание                                                                                                       |
+|-----------|-------|--------------|----------------------------------------------------------------------------------------------------------------|
+| `--using` | `str` | `None`       | Алиас подключения из `RABBITMQ_CONNECTIONS` для проверки. Если не указан, проверяются все сконфигурированные алиасы. |
+
+### Что делает команда
+
+1. Проверяет, что django_rmq инициализирован — вызывает `ImproperlyConfigured`, если `django_rmq` отсутствует в
+   `INSTALLED_APPS`.
+2. Определяет список алиасов (`--using` выбирает один; в противном случае — все сконфигурированные алиасы).
+3. Для каждого алиаса открывает producer-соединение и сразу же закрывает его:
+   - При успехе выводит `OK: <alias>` (жирным зелёным) в stdout.
+   - При ошибке (`AMQPError` или `OSError`) записывает предупреждение в лог и выводит `FAIL: <alias>` в stderr.
+4. Если хотя бы один алиас недоступен, вызывает `CommandError` (код выхода 1) со списком недоступных алиасов.
+5. Если все алиасы доступны, выводит итоговую строку `ok: <aliases>`.
+
+### Пример вывода
+
+```
+  OK: default
+  OK: analytics
+ok: default, analytics
+```
+
+При ошибке:
+
+```
+  OK: default
+  FAIL: analytics
+CommandError: unhealthy: analytics
+```
+
+### Пример: проверка конкретного алиаса
+
+```bash
+uv run python manage.py check_rabbitmq_connections --using analytics
+```
+
+### Коды выхода
+
+| Код | Значение                                                         |
+|-----|------------------------------------------------------------------|
+| `0` | Все проверенные алиасы доступны.                                 |
+| `1` | Хотя бы один алиас недоступен (вызывается `CommandError`).       |
+
 ## Запуск в production
 
 Типовая production-конфигурация запускает `setup_rabbitmq_topology` один раз при деплое, а затем поддерживает
@@ -173,3 +230,13 @@ CMD ["uv", "run", "python", "manage.py", "start_consumers"]
 
 Запускайте `setup_rabbitmq_topology` в отдельном init-контейнере или в хуке деплоя, чтобы топология была объявлена до
 того, как потребители попытаются привязаться к очередям.
+
+Используйте `check_rabbitmq_connections` в качестве readiness/liveness-пробы — команда завершается с ненулевым кодом,
+когда брокер недоступен:
+
+```yaml
+livenessProbe:
+  exec:
+    command: ["uv", "run", "python", "manage.py", "check_rabbitmq_connections"]
+  periodSeconds: 30
+```
