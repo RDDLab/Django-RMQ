@@ -47,9 +47,18 @@ jobs:
           rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
           find . -type d -name "__pycache__" -prune -exec rm -rf {} +
 
+  coverage:
+    name: Coverage
+    needs: lint
+    uses: ./.github/workflows/coverage.yml
+    permissions:
+      contents: read
+      id-token: write
+
   # Unit tests across the supported Python versions
   unit-test:
     runs-on: self-hosted
+    needs: coverage
 
     strategy:
       matrix:
@@ -77,9 +86,22 @@ jobs:
           rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
           find . -type d -name "__pycache__" -prune -exec rm -rf {} +
 
+  security:
+    name: Security checks
+    needs:
+      - lint
+      - unit-test
+    uses: ./.github/workflows/security.yml
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      security-events: write
+
   # Integration tests against a real RabbitMQ broker (deselected in the unit job)
   integration-test:
     runs-on: self-hosted
+    needs: coverage
 
     strategy:
       matrix:
