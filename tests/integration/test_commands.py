@@ -3,9 +3,11 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.exchange_type import ExchangeType
 
@@ -89,3 +91,25 @@ class TestCommands:
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait(timeout=5)
+
+    def test_check_connections_ok(
+        self,
+        configure_real_rmq,
+        capsys: pytest.CaptureFixture[str],
+    ):
+        configure_real_rmq()
+
+        call_command('check_rabbitmq_connections')
+
+        assert 'ok: default' in capsys.readouterr().out
+
+    def test_check_connections_unreachable_raises(
+        self,
+        configure_real_rmq,
+        broker_params: dict[str, Any],
+    ):
+        # A dead port makes the producer connection fail fast.
+        configure_real_rmq({'default': {**broker_params, 'PORT': 1}})
+
+        with pytest.raises(CommandError, match='default'):
+            call_command('check_rabbitmq_connections')
