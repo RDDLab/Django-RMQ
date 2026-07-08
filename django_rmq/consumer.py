@@ -309,4 +309,5 @@ class Consumer:
                     },
                 }
             )
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            if method.delivery_tag is not None:
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)

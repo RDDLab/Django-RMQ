@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -56,48 +57,93 @@ class RecordingChannel(_ChannelBase):
         """
         return getattr(self._channel, name)
 
-    # Signature is intentionally simplified vs `BlockingChannel`; this is a recording proxy.
-    # pyrefly: ignore[bad-override]
-    def exchange_declare(self, exchange: str = '', exchange_type: str = ExchangeType.direct, **kwargs: Any) -> Any:
+    def exchange_declare(
+        self,
+        exchange: str,
+        exchange_type: ExchangeType | str = ExchangeType.direct,
+        passive: bool = False,
+        durable: bool = False,
+        auto_delete: bool = False,
+        internal: bool = False,
+        arguments: Mapping[str, Any] | None = None,
+    ) -> Any:
         """
         Records the exchange declaration and forwards it to the real channel.
 
         :param exchange: Exchange name being declared.
         :param exchange_type: AMQP exchange type (direct, topic, fanout, headers).
-        :param kwargs: Remaining `exchange_declare` arguments passed through verbatim.
+        :param passive: Only check whether the exchange exists.
+        :param durable: Survive a broker restart.
+        :param auto_delete: Delete when no queues are bound.
+        :param internal: Restrict the exchange to broker-internal use.
+        :param arguments: Custom key/value arguments for the exchange.
         :return: The result of the underlying `exchange_declare` call.
         """
         self.exchanges.append({'name': exchange, 'type': exchange_type})
-        return self._channel.exchange_declare(exchange=exchange, exchange_type=exchange_type, **kwargs)
+        return self._channel.exchange_declare(
+            exchange=exchange,
+            exchange_type=ExchangeType(exchange_type),
+            passive=passive,
+            durable=durable,
+            auto_delete=auto_delete,
+            internal=internal,
+            arguments=arguments,
+        )
 
-    # Signature is intentionally simplified vs `BlockingChannel`; this is a recording proxy.
-    # pyrefly: ignore[bad-override]
-    def queue_declare(self, queue: str = '', **kwargs: Any) -> Any:
+    def queue_declare(
+        self,
+        queue: str,
+        passive: bool = False,
+        durable: bool = False,
+        exclusive: bool = False,
+        auto_delete: bool = False,
+        arguments: Mapping[str, Any] | None = None,
+    ) -> Any:
         """
         Records the queue declaration and forwards it to the real channel.
 
         :param queue: Queue name being declared.
-        :param kwargs: Remaining `queue_declare` arguments passed through verbatim
-                       (`arguments` is captured for reporting, e.g. dead-letter config).
+        :param passive: Only check whether the queue exists.
+        :param durable: Survive a broker restart.
+        :param exclusive: Restrict the queue to the declaring connection.
+        :param auto_delete: Delete when the last consumer unsubscribes.
+        :param arguments: Custom key/value arguments (e.g. dead-letter config),
+                          captured for reporting.
         :return: The result of the underlying `queue_declare` call.
         """
-        self.queues.append({'name': queue, 'arguments': kwargs.get('arguments')})
-        return self._channel.queue_declare(queue=queue, **kwargs)
+        self.queues.append({'name': queue, 'arguments': arguments})
+        return self._channel.queue_declare(
+            queue=queue,
+            passive=passive,
+            durable=durable,
+            exclusive=exclusive,
+            auto_delete=auto_delete,
+            arguments=arguments,
+        )
 
-    # Signature is intentionally simplified vs `BlockingChannel`; this is a recording proxy.
-    # pyrefly: ignore[bad-override]
-    def queue_bind(self, queue: str, exchange: str, routing_key: str | None = None, **kwargs: Any) -> Any:
+    def queue_bind(
+        self,
+        queue: str,
+        exchange: str,
+        routing_key: str | None = None,
+        arguments: Mapping[str, Any] | None = None,
+    ) -> Any:
         """
         Records the queue binding and forwards it to the real channel.
 
         :param queue: Queue being bound.
         :param exchange: Exchange the queue is bound to.
         :param routing_key: Routing key for the binding (may be omitted for fanout).
-        :param kwargs: Remaining `queue_bind` arguments passed through verbatim.
+        :param arguments: Custom key/value arguments for the binding.
         :return: The result of the underlying `queue_bind` call.
         """
         self.bindings.append({'queue': queue, 'exchange': exchange, 'routing_key': routing_key})
-        return self._channel.queue_bind(queue=queue, exchange=exchange, routing_key=routing_key, **kwargs)
+        return self._channel.queue_bind(
+            queue=queue,
+            exchange=exchange,
+            routing_key=routing_key,
+            arguments=arguments,
+        )
 
 
 class Command(RDDBaseCommand):
