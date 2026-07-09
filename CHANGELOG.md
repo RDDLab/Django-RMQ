@@ -2,7 +2,43 @@
 
 All notable changes to **Django-RMQ** are documented in this file.
 
-## [1.0.1] — 2026-07-05
+## [1.0.4] — Unreleased
+
+### Fixed
+
+- **Consumer** — guard `basic_nack` against a missing delivery tag: when a
+  handler raises, the message is only nacked if `method.delivery_tag` is set,
+  avoiding an invalid nack with `delivery_tag=None`.
+
+### Changed
+
+- **Topology setup** — the `RecordingChannel` proxy used by
+  `setup_rabbitmq_topology` now exposes explicit, fully typed keyword parameters
+  (`passive`, `durable`, `auto_delete`, `internal`, `exclusive`, `arguments`, …)
+  on `exchange_declare` / `queue_declare` / `queue_bind`, mirroring Pika's
+  `BlockingChannel` instead of accepting `**kwargs`. Setup functions get proper
+  type checking and the overrides are now LSP-consistent.
+
+[1.0.4]: https://github.com/RDDLab/Django-RMQ/releases/tag/1.0.4
+
+## [1.0.3] — 2026-07-08
+
+### Management commands
+
+- `check_rabbitmq_connections` — healthcheck command that verifies RabbitMQ
+  connectivity by opening and immediately closing a connection per alias. Pass
+  `--using <alias>` to check a single connection, or omit it to check every
+  alias in `RABBITMQ_CONNECTIONS`. Reports each alias as OK/FAIL and exits with
+  a `CommandError` if any connection is unreachable.
+
+### Documentation
+
+- Documented `check_rabbitmq_connections` in the English and Russian
+  management-commands guides.
+
+[1.0.3]: https://github.com/RDDLab/Django-RMQ/releases/tag/1.0.3
+
+## [1.0.2] — 2026-07-05
 
 First production-ready release of Django-RMQ — a set of Django wrappers and tools
 for RabbitMQ built on top of [Pika](https://pika.readthedocs.io/).
@@ -57,4 +93,4 @@ for RabbitMQ built on top of [Pika](https://pika.readthedocs.io/).
 - Supports **Python 3.10–3.14** and **Django 4.2 / 5.0 / 5.1 / 5.2 / 6.0**.
 - Requires `pika>=1.4.1,<2.0`.
 
-[1.0.1]: https://github.com/RDDLab/Django-RMQ/releases/tag/v1.0.1
+[1.0.2]: https://github.com/RDDLab/Django-RMQ/releases/tag/1.0.2

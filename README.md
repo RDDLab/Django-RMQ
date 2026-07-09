@@ -9,11 +9,15 @@
 [![PyPI status](https://img.shields.io/pypi/status/django-rmq.svg?style=for-the-badge)](https://pypi.python.org/pypi/django-rmq)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/django-rmq?style=for-the-badge)](https://pypistats.org/packages/django-rmq)
 [![PyPI - Types](https://img.shields.io/pypi/types/django-rmq.svg?style=for-the-badge)](https://pypi.python.org/pypi/django-rmq)
-[![Tests](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml/badge.svg?branch=main?style=for-the-badge)](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml)
-
 ---
 
 [![RabbitMQ Support](https://img.shields.io/static/v1?label=RabbitMQ%20Support&message=v3.13%20%7C%20v4.0%20%7C%20v4.1%20%7C%20v4.2%20%7C%20v4.3&color=ff6600&labelColor=555&style=for-the-badge)](https://www.rabbitmq.com/)
+
+---
+[![Tests](https://img.shields.io/github/actions/workflow/status/RDDLab/Django-RMQ/testing.yml?branch=main&label=Tests)](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13524/badge)](https://www.bestpractices.dev/projects/13524)
+[![Codecov](https://img.shields.io/codecov/c/github/RDDLab/Django-RMQ/main?logo=codecov)](https://codecov.io/gh/RDDLab/Django-RMQ)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/RDDLab/Django-RMQ/main.svg)](https://results.pre-commit.ci/latest/github/RDDLab/Django-RMQ/main)
 
 ---
 

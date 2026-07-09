@@ -27,6 +27,9 @@ ignore = [
 
 [lint.per-file-ignores]
 "apps.py" = ["F401"]
+# RecordingChannel mirrors pika's BlockingChannel signatures verbatim to stay
+# LSP-compatible, so the wide argument lists are intentional.
+"**/commands/setup_rabbitmq_topology.py" = ["PLR0913"]
 "tests/*" = [
     "PLR2004", # magic value in comparison — expected in assertions
     "PLW0108", # lambda may be unnecessary — concise test stubs
