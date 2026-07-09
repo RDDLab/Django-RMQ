@@ -41,7 +41,6 @@ reviews:
     - "!docs/.vuepress/dist/**"
     - "!coverage.xml"
     - "!htmlcov/**"
-    - "!*.lock"
     - "!package-lock.json"
     - "!*.png"
     - "!*.jpg"
@@ -58,6 +57,7 @@ reviews:
       - "DO NOT MERGE"
     ignore_usernames:
       - "dependabot[bot]"
+      - "pre-commit-ci[bot]"
 
   path_instructions:
     - path: "django_rmq/**/*.py"

@@ -2,6 +2,7 @@ ci:
   autofix_commit_msg: "chore: apply pre-commit fixes"
   autoupdate_commit_msg: "chore: update pre-commit hooks"
   autoupdate_schedule: "quarterly"
+  skip: [pyrefly]
 
 default_language_version:
   python: python3.10
@@ -30,3 +31,13 @@ repos:
       - id: ruff-check
         args: ["--fix"]
       - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: pyrefly
+        name: pyrefly
+        entry: uv run pyrefly check
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
