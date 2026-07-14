@@ -12,13 +12,17 @@ def _main() -> None:
     import django_rmq
     from django_rmq.connections import RabbitMQConnectionManager
     from django_rmq.consumer import Consumer
-    from django_rmq.dto.rabbitmq_config import RabbitMQConfig
+    from django_rmq.dto.rabbitmq_config import NodeConfig, RabbitMQConfig
     from django_rmq.registries.registry import ConsumersRegistry, get_consumers_registry
     from django_rmq.registries.setup_registry import SetupRegistry
 
     config: RabbitMQConfig = RabbitMQConfig(
-        host=os.environ.get('RMQ_HOST', 'localhost'),
-        port=int(os.environ.get('RMQ_PORT', '5672')),
+        nodes=(
+            NodeConfig(
+                host=os.environ.get('RMQ_HOST', 'localhost'),
+                port=int(os.environ.get('RMQ_PORT', '5672')),
+            ),
+        ),
         virtual_host=os.environ.get('RMQ_VHOST', '/'),
         user=os.environ.get('RMQ_USER', 'guest'),
         password=os.environ.get('RMQ_PASSWORD', 'guest'),

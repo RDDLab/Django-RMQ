@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-rmq"
-version = "1.0.4"
+version = "1.0.5"
 description = "Django RabbitMQ Wrappers & Tools over Pika"
 readme = "README.md"
 authors = [
@@ -78,6 +78,7 @@ pythonpath = ["."]
 testpaths = ["tests"]
 markers = [
     "integration: tests that require a real RabbitMQ broker (deselected by default)",
+    "cluster: tests that require a multi-node RabbitMQ cluster (also marked integration)",
 ]
 addopts = '-ra -m "not integration"'
 

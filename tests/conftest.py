@@ -21,6 +21,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 import django_rmq
+from django_rmq.apps import RabbitMQAppConfig
 from django_rmq.connections import RabbitMQConnectionManager
 from django_rmq.dto.rabbitmq_config import RabbitMQConfig
 from django_rmq.registries.registry import ConsumersRegistry
@@ -58,19 +59,10 @@ SECOND_ALIAS_PARAMS: dict[str, Any] = {
 
 def _build_config(params: dict[str, Any]) -> RabbitMQConfig:
     """
-    Builds a RabbitMQConfig from a RABBITMQ_CONNECTIONS-style alias dict.
+    Builds a RabbitMQConfig from a RABBITMQ_CONNECTIONS-style alias dict,
+    reusing the app's own normalization so tests exercise the real logic.
     """
-    return RabbitMQConfig(
-        host=params['HOST'],
-        port=params['PORT'],
-        virtual_host=params['VIRTUAL_HOST'],
-        user=params['USER'],
-        password=params['PASSWORD'],
-        heartbeat=params['HEARTBEAT'],
-        blocked_connection_timeout=params['BLOCKED_CONNECTION_TIMEOUT'],
-        reconnect_initial_backoff=params['RECONNECT_INITIAL_BACKOFF'],
-        reconnect_max_backoff=params['RECONNECT_MAX_BACKOFF'],
-    )
+    return RabbitMQAppConfig._build_config(alias='test', params=params)
 
 
 @pytest.fixture(autouse=True)

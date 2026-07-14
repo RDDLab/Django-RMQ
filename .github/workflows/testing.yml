@@ -133,7 +133,7 @@ jobs:
         run: uv sync --group dev --python ${{ matrix.python-version }}
 
       - name: Run integration tests
-        run: uv run --python ${{ matrix.python-version }} pytest -m integration
+        run: uv run --python ${{ matrix.python-version }} pytest -m "integration and not cluster"
 
       - name: Tear down RabbitMQ and clean up runner artifacts
         if: always()
@@ -142,6 +142,53 @@ jobs:
           docker ps -aq --filter "ancestor=rabbitmq:${{ matrix.rabbitmq-version }}-management-alpine" \
             | xargs -r docker rm -fv
           docker image rm -f "rabbitmq:${{ matrix.rabbitmq-version }}-management-alpine" || true
+          # Wipe per-run Python/pytest build artifacts from the persistent workspace.
+          rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
+          find . -type d -name "__pycache__" -prune -exec rm -rf {} +
+
+  cluster-test:
+    runs-on: self-hosted
+
+    strategy:
+      matrix:
+        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+      fail-fast: true
+
+    env:
+      RABBITMQ_IMAGE: rabbitmq:4.3-management-alpine
+      RMQ_HOST: localhost
+      RMQ_PORT: 5672
+      RMQ_MGMT_PORT: 15672
+      RMQ_USER: guest
+      RMQ_PASSWORD: guest
+      RMQ_VHOST: /
+      RMQ_CLUSTER_NODES: localhost:5672,localhost:5673,localhost:5674
+      RMQ_CLUSTER_CONTAINERS: django-rmq-cluster-rabbit1,django-rmq-cluster-rabbit2,django-rmq-cluster-rabbit3
+      COMPOSE_FILE: .github/docker-compose.cluster.yml
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --group dev --python ${{ matrix.python-version }}
+
+      - name: Start RabbitMQ cluster
+        run: docker compose -f "$COMPOSE_FILE" up -d --wait
+
+      - name: Run cluster tests
+        run: uv run --python ${{ matrix.python-version }} pytest -m cluster
+
+      - name: Tear down cluster and clean up runner artifacts
+        if: always()
+        run: |
+          docker compose -f "$COMPOSE_FILE" down -v || true
+          docker image rm -f "$RABBITMQ_IMAGE" || true
           # Wipe per-run Python/pytest build artifacts from the persistent workspace.
           rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
           find . -type d -name "__pycache__" -prune -exec rm -rf {} +

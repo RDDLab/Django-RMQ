@@ -41,6 +41,7 @@ Django-RMQ provides RabbitMQ wrappers and tools for Django projects, built on to
 - **Dead-letter routing** — declare queues with `QueueConfig(dead_letter_exchange=...)` so unhandled messages are nacked without requeue and routed to a DLX.
 - **Management commands** — `setup_rabbitmq_topology` (idempotent exchange/queue/binding setup) and `start_consumers` (threaded runner with graceful SIGTERM/SIGINT shutdown).
 - **Multiple connections** — configure several broker aliases and select per producer/consumer via `using=`.
+- **RabbitMQ clusters** — point one alias at several nodes via NODES for client-side failover; pika tries each node until one connects. Optional SHUFFLE_NODES spreads clients across the cluster.
 - **Fully typed** — ships `py.typed`; compatible with pyrefly and standard type checkers.
 
 ## Installation
@@ -71,6 +72,8 @@ RABBITMQ_CONNECTIONS = {
     },
 }
 ```
+
+For multi-node clusters, use a NODES list instead of HOST/PORT — see the Clusters guide.
 
 ## Quick start
 

@@ -1,5 +1,7 @@
 import contextlib
 import os
+import shutil
+import subprocess
 import threading
 import time
 import urllib.error
@@ -17,6 +19,7 @@ from pika import BlockingConnection, ConnectionParameters, PlainCredentials
 from pika.adapters.blocking_connection import BlockingChannel
 
 import django_rmq
+from django_rmq.apps import RabbitMQAppConfig
 from django_rmq.connections import RabbitMQConnectionManager
 from django_rmq.dto.rabbitmq_config import RabbitMQConfig
 from django_rmq.registries.registry import ConsumersRegistry
@@ -46,19 +49,10 @@ def connection_parameters(params: dict[str, Any]) -> ConnectionParameters:
 
 def build_config(params: dict[str, Any]) -> RabbitMQConfig:
     """
-    Builds a RabbitMQConfig from a RABBITMQ_CONNECTIONS-style alias dict.
+    Builds a RabbitMQConfig from a RABBITMQ_CONNECTIONS-style alias dict,
+    reusing the app's own normalization so integration tests exercise it too.
     """
-    return RabbitMQConfig(
-        host=params['HOST'],
-        port=params['PORT'],
-        virtual_host=params['VIRTUAL_HOST'],
-        user=params['USER'],
-        password=params['PASSWORD'],
-        heartbeat=params['HEARTBEAT'],
-        blocked_connection_timeout=params['BLOCKED_CONNECTION_TIMEOUT'],
-        reconnect_initial_backoff=params['RECONNECT_INITIAL_BACKOFF'],
-        reconnect_max_backoff=params['RECONNECT_MAX_BACKOFF'],
-    )
+    return RabbitMQAppConfig._build_config(alias='integration', params=params)
 
 
 def poll(predicate: Callable[[], Any], timeout: float = 10.0, interval: float = 0.1) -> Any:
@@ -373,3 +367,166 @@ def run_consumer() -> Iterator[Callable[[Any], RunningConsumer]]:
         handle.stop_event.set()
     for handle in running:
         handle.thread.join(timeout=10)
+
+
+# --------------------------------------------------------------------------- #
+# Cluster fixtures                                                            #
+#                                                                             #
+# These target the three-node cluster from                                    #
+# `.github/docker-compose.cluster.yml`. They are used only by tests marked    #
+# `cluster` and auto-skip when a real cluster is not reachable, so a          #
+# single-broker environment stays green.                                      #
+# --------------------------------------------------------------------------- #
+
+
+def _amqp_reachable(host: str, port: int, *, params: dict[str, Any]) -> bool:
+    """
+    Returns True if an AMQP connection to host:port can be opened right now.
+    """
+    node_params: dict[str, Any] = {**params, 'HOST': host, 'PORT': port}
+    try:
+        connection: BlockingConnection = BlockingConnection(parameters=connection_parameters(params=node_params))
+        connection.close()
+    except Exception:  # any dial failure means "not reachable"
+        return False
+    return True
+
+
+@pytest.fixture(scope='session')
+def cluster_endpoints() -> list[tuple[str, int]]:
+    """
+    Parses the cluster's AMQP endpoints from `RMQ_CLUSTER_NODES`.
+
+    Format: comma-separated `host:port` pairs. Defaults to the three host ports
+    published by `.github/docker-compose.cluster.yml`.
+    """
+    raw: str = _env('RMQ_CLUSTER_NODES', 'localhost:5672,localhost:5673,localhost:5674')
+    endpoints: list[tuple[str, int]] = []
+    for item in raw.split(','):
+        host, _, port = item.strip().partition(':')
+        endpoints.append((host, int(port)))
+    return endpoints
+
+
+@pytest.fixture(scope='session')
+def cluster_containers() -> list[str]:
+    """
+    Docker container names for the cluster nodes, index-aligned with
+    `cluster_endpoints`. Overridable via `RMQ_CLUSTER_CONTAINERS`.
+    """
+    raw: str = _env(
+        'RMQ_CLUSTER_CONTAINERS',
+        'django-rmq-cluster-rabbit1,django-rmq-cluster-rabbit2,django-rmq-cluster-rabbit3',
+    )
+    return [name.strip() for name in raw.split(',')]
+
+
+@pytest.fixture(scope='session')
+def cluster_broker_params(
+    broker_params: dict[str, Any],
+    cluster_endpoints: list[tuple[str, int]],
+) -> Callable[..., dict[str, Any]]:
+    """
+    Returns a builder for a `RABBITMQ_CONNECTIONS`-style alias dict whose `NODES`
+    point at the whole cluster. Credentials/vhost/timeouts are inherited from
+    `broker_params`; `HOST`/`PORT` are replaced by the multi-node `NODES` list.
+    """
+
+    def _build(shuffle: bool = False, endpoints: list[tuple[str, int]] | None = None) -> dict[str, Any]:
+        nodes: list[tuple[str, int]] = endpoints if endpoints is not None else cluster_endpoints
+        params: dict[str, Any] = {key: value for key, value in broker_params.items() if key not in ('HOST', 'PORT')}
+        params['NODES'] = [{'HOST': host, 'PORT': port} for host, port in nodes]
+        params['SHUFFLE_NODES'] = shuffle
+        return params
+
+    return _build
+
+
+@pytest.fixture(scope='session')
+def require_cluster(
+    broker_params: dict[str, Any],
+    cluster_endpoints: list[tuple[str, int]],
+) -> None:
+    """
+    Skips the test session's cluster tests unless at least two cluster nodes are
+    reachable (a single broker is not a cluster).
+    """
+    reachable: int = sum(
+        1 for host, port in cluster_endpoints if _amqp_reachable(host=host, port=port, params=broker_params)
+    )
+    if reachable < 2:
+        pytest.skip(f'RabbitMQ cluster not available (only {reachable} node(s) reachable)')
+
+
+class NodeControl:
+    """
+    Kills and restarts cluster nodes by their Docker container name so a test can
+    simulate a node going down. `kill` uses `docker kill` (immediate, like a
+    crash); `start` brings the same container back (its filesystem, hence the
+    quorum queue data, is preserved across the restart).
+    """
+
+    def __init__(self, containers: list[str], endpoints: list[tuple[str, int]], params: dict[str, Any]) -> None:
+        self._containers: list[str] = containers
+        self._endpoints: list[tuple[str, int]] = endpoints
+        self._params: dict[str, Any] = params
+
+    @classmethod
+    def _docker(cls, *args: str) -> None:
+        subprocess.run(['docker', *args], check=True, capture_output=True)
+
+    def kill(self, index: int) -> None:
+        """
+        Force-stops the node at `index` and waits until its AMQP port is closed.
+        """
+        self._docker('kill', self._containers[index])
+        host, port = self._endpoints[index]
+        assert poll(
+            lambda: not _amqp_reachable(host=host, port=port, params=self._params),
+            timeout=15,
+        ), f'node {self._containers[index]} still reachable after kill'
+
+    def start(self, index: int) -> None:
+        """
+        Starts the node at `index` and waits until its AMQP port accepts connections.
+        """
+        self._docker('start', self._containers[index])
+        host, port = self._endpoints[index]
+        assert poll(
+            lambda: _amqp_reachable(host=host, port=port, params=self._params),
+            timeout=30,
+        ), f'node {self._containers[index]} not reachable after start'
+
+
+@pytest.fixture
+def node_control(
+    broker_params: dict[str, Any],
+    cluster_endpoints: list[tuple[str, int]],
+    cluster_containers: list[str],
+) -> Iterator[NodeControl]:
+    """
+    Provides a NodeControl for killing/restarting cluster nodes. Skips the test
+    if Docker is unavailable or a container is missing. On teardown every node is
+    started again and awaited healthy — this runs before topology cleanup so
+    deletes go against a live cluster.
+    """
+    if shutil.which('docker') is None:
+        pytest.skip('docker CLI not available for node control')
+
+    control: NodeControl = NodeControl(
+        containers=cluster_containers,
+        endpoints=cluster_endpoints,
+        params=broker_params,
+    )
+    for name in cluster_containers:
+        result = subprocess.run(['docker', 'inspect', name], capture_output=True, check=False)
+        if result.returncode != 0:
+            pytest.skip(f'cluster container {name!r} not found (is the cluster compose up?)')
+
+    yield control
+
+    # Best-effort: bring every node back so a killed node never leaks into the
+    # next test.
+    for index in range(len(cluster_containers)):
+        with contextlib.suppress(Exception):
+            control.start(index)

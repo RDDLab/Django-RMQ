@@ -7,7 +7,7 @@ from pika.spec import BasicProperties
 from pytest_mock import MockerFixture
 
 from django_rmq.producer import Producer
-from django_rmq.queues.queue_config import QueueConfig
+from django_rmq.queues.queue_config import QueueConfig, QueueType
 
 
 @pytest.fixture
@@ -97,6 +97,17 @@ class TestProducerQueueDeclaration:
                 'x-dead-letter-exchange': 'dlx-orders',
                 'x-dead-letter-routing-key': 'dlq-orders',
             },
+        )
+
+    def test_queue_config_with_queue_type_declared_actively(
+        self, mock_manager: MagicMock, mock_channel: MagicMock
+    ) -> None:
+        config = QueueConfig(name='orders', queue_type=QueueType.QUORUM)
+        Producer(queue=config).publish(body='x')
+        mock_channel.queue_declare.assert_called_once_with(
+            queue='orders',
+            durable=True,
+            arguments={'x-queue-type': 'quorum'},
         )
 
     def test_empty_queue_skips_declaration(self, mock_manager: MagicMock, mock_channel: MagicMock) -> None:

@@ -6,13 +6,15 @@ from pika.exceptions import AMQPError
 from pytest_mock import MockerFixture
 
 from django_rmq.connections import RabbitMQConnectionManager
-from django_rmq.dto.rabbitmq_config import RabbitMQConfig
+from django_rmq.dto.rabbitmq_config import NodeConfig, RabbitMQConfig
 
 
-def _make_config() -> RabbitMQConfig:
+def _make_config(
+    nodes: tuple[NodeConfig] = (NodeConfig(host='localhost', port=5672),),
+    shuffle_nodes: bool = False,
+) -> RabbitMQConfig:
     return RabbitMQConfig(
-        host='localhost',
-        port=5672,
+        nodes=nodes,
         virtual_host='/',
         user='guest',
         password='guest',
@@ -20,6 +22,7 @@ def _make_config() -> RabbitMQConfig:
         blocked_connection_timeout=300,
         reconnect_initial_backoff=1.0,
         reconnect_max_backoff=30.0,
+        shuffle_nodes=shuffle_nodes,
     )
 
 
@@ -120,3 +123,50 @@ class TestResetProducerChannel:
         # Nothing opened yet — reset should be harmless.
         manager.reset_producer_channel()
         assert distinct_connections == []
+
+
+class TestClusterNodes:
+    def test_connection_receives_all_nodes_in_order(self, mocker: MockerFixture) -> None:
+        nodes = (
+            NodeConfig(host='n1', port=5672),
+            NodeConfig(host='n2', port=5673),
+            NodeConfig(host='n3', port=5674),
+        )
+        blocking = mocker.patch('django_rmq.connections.BlockingConnection')
+
+        manager = RabbitMQConnectionManager(config=_make_config(nodes=nodes))
+        manager.get_producer_connection()
+
+        sequence = blocking.call_args.kwargs['parameters']
+        assert [(params.host, params.port) for params in sequence] == [
+            ('n1', 5672),
+            ('n2', 5673),
+            ('n3', 5674),
+        ]
+
+    def test_shuffle_disabled_keeps_node_order(self, mocker: MockerFixture) -> None:
+        nodes = (NodeConfig(host='n1', port=5672), NodeConfig(host='n2', port=5673))
+        shuffle = mocker.patch('django_rmq.connections.random.shuffle')
+        mocker.patch('django_rmq.connections.BlockingConnection')
+
+        manager = RabbitMQConnectionManager(config=_make_config(nodes=nodes, shuffle_nodes=False))
+        manager.get_producer_connection()
+
+        shuffle.assert_not_called()
+
+    def test_shuffle_enabled_reshuffles_each_connect(self, mocker: MockerFixture) -> None:
+        nodes = (NodeConfig(host='n1', port=5672), NodeConfig(host='n2', port=5673))
+        shuffle = mocker.patch('django_rmq.connections.random.shuffle')
+        blocking = mocker.patch('django_rmq.connections.BlockingConnection')
+
+        manager = RabbitMQConnectionManager(config=_make_config(nodes=nodes, shuffle_nodes=True))
+        manager.get_producer_connection()
+        manager.get_consumer_connection()
+
+        # Shuffled once per opened connection (producer + consumer), on a fresh
+        # copy each time — never the shared source list.
+        assert shuffle.call_count == 2
+        for call, blocking_call in zip(shuffle.call_args_list, blocking.call_args_list, strict=True):
+            shuffled_list = call.args[0]
+            assert shuffled_list is not manager._node_parameters
+            assert shuffled_list is blocking_call.kwargs['parameters']
