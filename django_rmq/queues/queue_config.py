@@ -25,19 +25,19 @@ class QueueConfig:
 
     :param name: Queue name (also used as its string representation).
     :param durable: Whether the queue survives, a broker restarts.
-    :param queue_type: Optional queue type (sets x-queue-type). When None the
-                       broker applies its own default_queue_type.
     :param dead_letter_exchange: Optional exchange dead-lettered messages are
                                  routed to (sets x-dead-letter-exchange).
     :param dead_letter_routing_key: Optional routing key used when dead-lettering
                                     (sets x-dead-letter-routing-key).
+    :param queue_type: Optional queue type (sets x-queue-type). When None the
+                       broker applies its own default_queue_type.
     """
 
     name: str
     durable: bool = True
-    queue_type: QueueType | None = None
     dead_letter_exchange: str | None = None
     dead_letter_routing_key: str | None = None
+    queue_type: QueueType | None = None
 
     def __str__(self) -> str:
         """

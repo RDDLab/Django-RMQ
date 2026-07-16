@@ -6,6 +6,14 @@ class TestQueueConfigStr:
         assert str(QueueConfig(name='orders')) == 'orders'
 
 
+class TestQueueConfigPositionalArgs:
+    def test_legacy_positional_dead_letter_args(self) -> None:
+        config = QueueConfig('orders', True, 'dlx-orders', 'dlq-orders')
+        assert config.dead_letter_exchange == 'dlx-orders'
+        assert config.dead_letter_routing_key == 'dlq-orders'
+        assert config.queue_type is None
+
+
 class TestQueueConfigArguments:
     def test_arguments_none_when_no_settings(self) -> None:
         assert QueueConfig(name='orders').arguments is None
