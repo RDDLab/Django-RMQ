@@ -158,3 +158,10 @@ cleans them up, so it is safe against a shared broker (use a dedicated vhost).
 ## License
 
 MIT
+
+---
+## Support project
+
+<a href="https://nowpayments.io/donation?api_key=7664bfa5-ea12-4ded-9c3b-8a498d437114" target="_blank" rel="noreferrer noopener">
+    <img src="https://nowpayments.io/images/embeds/donation-button-white.svg" alt="Cryptocurrency & Bitcoin donation button by NOWPayments">
+</a>
