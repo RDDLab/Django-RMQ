@@ -1,4 +1,5 @@
 import logging
+import random
 import threading
 
 from pika import BlockingConnection, ConnectionParameters, PlainCredentials
@@ -38,18 +39,38 @@ class RabbitMQConnectionManager:
 
     def __init__(self, config: RabbitMQConfig) -> None:
         self.config: RabbitMQConfig = config
-        self._parameters: ConnectionParameters = ConnectionParameters(
-            host=config.host,
-            port=config.port,
-            virtual_host=config.virtual_host,
-            credentials=PlainCredentials(
-                username=config.user,
-                password=config.password,
-            ),
-            heartbeat=config.heartbeat,
-            blocked_connection_timeout=config.blocked_connection_timeout,
+        credentials: PlainCredentials = PlainCredentials(
+            username=config.user,
+            password=config.password,
         )
+        self._node_parameters: list[ConnectionParameters] = [
+            ConnectionParameters(
+                host=node.host,
+                port=node.port,
+                virtual_host=config.virtual_host,
+                credentials=credentials,
+                heartbeat=config.heartbeat,
+                blocked_connection_timeout=config.blocked_connection_timeout,
+            )
+            for node in config.nodes
+        ]
+        self._shuffle_nodes: bool = config.shuffle_nodes
         self._local: threading.local = threading.local()
+
+    def _build_connection_sequence(self) -> list[ConnectionParameters]:
+        """
+        Returns the node parameters to hand to a new BlockingConnection.
+
+        A fresh copy is returned every time; when `shuffle_nodes` is enabled the
+        copy is reshuffled so each connection attempt (initial or reconnect)
+        prefers a different node, spreading clients across the cluster.
+
+        :return: The (optionally shuffled) list of per-node ConnectionParameters.
+        """
+        sequence: list[ConnectionParameters] = list(self._node_parameters)
+        if self._shuffle_nodes:
+            random.shuffle(sequence)
+        return sequence
 
     def _get_or_create_connection(self, attr: str, source: str, message: str) -> BlockingConnection:
         """
@@ -63,14 +84,18 @@ class RabbitMQConnectionManager:
         :return: An open BlockingConnection cached on the current thread.
         """
         if not hasattr(self._local, attr) or not getattr(self._local, attr).is_open:
+            sequence: list[ConnectionParameters] = self._build_connection_sequence()
             logger.debug(
                 {
                     'source': source,
                     'message': message,
-                    'data': {'host': self._parameters.host, 'port': self._parameters.port},
+                    'data': {
+                        'nodes': [{'host': params.host, 'port': params.port} for params in sequence],
+                        'shuffle': self._shuffle_nodes,
+                    },
                 }
             )
-            setattr(self._local, attr, BlockingConnection(parameters=self._parameters))
+            setattr(self._local, attr, BlockingConnection(parameters=sequence))
         return getattr(self._local, attr)
 
     def get_producer_connection(self) -> BlockingConnection:

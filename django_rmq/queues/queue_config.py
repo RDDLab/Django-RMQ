@@ -1,5 +1,21 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
+
+
+class QueueType(str, Enum):
+    """
+    Supported RabbitMQ queue types (the `x-queue-type` declaration argument).
+
+    Subclassing `str` (instead of 3.11+ `StrEnum`, unavailable on Python 3.10)
+    makes each member an actual string, so its value is serialized to the broker
+    as-is. When left unset on a `QueueConfig`, the broker applies its own
+    `default_queue_type` (classic unless configured otherwise).
+    """
+
+    CLASSIC = 'classic'
+    QUORUM = 'quorum'
+    STREAM = 'stream'
 
 
 @dataclass(frozen=True)
@@ -13,12 +29,15 @@ class QueueConfig:
                                  routed to (sets x-dead-letter-exchange).
     :param dead_letter_routing_key: Optional routing key used when dead-lettering
                                     (sets x-dead-letter-routing-key).
+    :param queue_type: Optional queue type (sets x-queue-type). When None the
+                       broker applies its own default_queue_type.
     """
 
     name: str
     durable: bool = True
     dead_letter_exchange: str | None = None
     dead_letter_routing_key: str | None = None
+    queue_type: QueueType | None = None
 
     def __str__(self) -> str:
         """
@@ -31,10 +50,12 @@ class QueueConfig:
         """
         Builds the AMQP `arguments` dict for queue declaration.
 
-        :return: A dict with the configured x-dead-letter-* arguments, or None if
-                 no dead-letter settings are present.
+        :return: A dict with the configured x-queue-type and x-dead-letter-*
+                 arguments, or None if none of them are present.
         """
         args: dict[str, Any] = {}
+        if self.queue_type is not None:
+            args['x-queue-type'] = self.queue_type.value
         if self.dead_letter_exchange is not None:
             args['x-dead-letter-exchange'] = self.dead_letter_exchange
         if self.dead_letter_routing_key is not None:

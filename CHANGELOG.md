@@ -2,7 +2,52 @@
 
 All notable changes to **Django-RMQ** are documented in this file.
 
-## [1.0.4] — Unreleased
+## [1.0.5] — Unreleased
+
+### Added
+
+- **RabbitMQ cluster support** — an alias can now define multiple broker nodes via the new NODES key (list of {HOST,
+  PORT}); pika iterates the nodes for client-side failover. Credentials, virtual host, and timeouts are shared across
+  nodes. The legacy scalar HOST/PORT form still works and is treated as a single node.
+- **SHUFFLE_NODES** (optional, default False) — reshuffles the node order on every connection attempt so clients spread
+  across the cluster.
+- **Queue type support** — `QueueConfig` gained a new optional `queue_type` field, backed by a new `QueueType` enum
+  (`classic`/`quorum`/`stream`, in `django_rmq/queues/queue_config.py`). It sets the `x-queue-type` declaration
+  argument; when left as `None` (the default), the broker applies its own `default_queue_type`. Fully backward
+  compatible — no producer or consumer changes required.
+
+### Tests
+
+- **Cluster integration tests** — a committed three-node RabbitMQ cluster (`.github/docker-compose.cluster.yml`,
+  classic_config peer discovery, shared Erlang cookie, `default_queue_type = quorum`) backs a new
+  `tests/integration/test_cluster.py` suite, marked with the new `cluster` marker (run via `pytest -m cluster`). Covers
+  a dead node being skipped in the `NODES` list, `SHUFFLE_NODES` spreading connections across nodes, and the headline
+  scenario — a producer/consumer failing over to a surviving node after `docker kill` takes down the one they were
+  connected to. Cluster tests auto-skip (`require_cluster`) when fewer than two nodes are reachable, so a single-broker
+  environment is unaffected. CI runs them in a new dedicated `cluster-test` job; the existing integration job now runs
+  `pytest -m "integration and not cluster"`.
+
+### Changed
+
+- **Configuration validation** — NODES and HOST/PORT are mutually exclusive; empty NODES, a node missing HOST/PORT, or
+  specifying neither form now raises ImproperlyConfigured (see django_rmq/apps.py._resolve_nodes).
+
+### Documentation
+
+- New "Clusters" guide (EN/RU) covering client-side failover, NODES vs load balancer/DNS, SHUFFLE_NODES, reconnect
+  interaction, and quorum queues. Configuration guide updated with NODES/SHUFFLE_NODES and the new validation error
+  cases.
+- Testing guide (EN/RU) documents the cluster integration tests — how to bring up the three-node cluster, run
+  `pytest -m cluster`, and what each test covers. Clusters guide links to it.
+- API reference, Topology, and Clusters guides (EN/RU) updated for `queue_type` / `QueueType`. The Clusters guide's
+  "Quorum queues" section is rewritten to recommend declaring quorum queues via
+  `QueueConfig(queue_type=QueueType.QUORUM)`, with the raw setup-function approach kept as a lower-level alternative.
+- **Documentation versioning** — the VuePress site now serves versioned docs under `/{en,ru}/1.0.5/` (current) and
+  `/{en,ru}/1.0.4/` (frozen snapshot from the `1.0.4` tag). `/en/` and `/ru/` redirect to the latest version, and a
+  "Version" dropdown in the navbar switches between them. The 1.0.4 sidebar omits the Clusters guide, which did not
+  exist in that release.
+
+## [1.0.4] — 2026-07-11
 
 ### Fixed
 

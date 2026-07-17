@@ -33,6 +33,7 @@ ignore = [
 "tests/*" = [
     "PLR2004", # magic value in comparison — expected in assertions
     "PLW0108", # lambda may be unnecessary — concise test stubs
+    "PLR0913", # many arguments — tests legitimately compose many fixtures
 ]
 
 [lint.flake8-tidy-imports]

@@ -6,7 +6,7 @@ from pika.exceptions import AMQPConnectionError
 from pytest_mock import MockerFixture
 
 from django_rmq.consumer import Consumer
-from django_rmq.queues.queue_config import QueueConfig
+from django_rmq.queues.queue_config import QueueConfig, QueueType
 
 
 def _noop_handler(ch: object, method: object, props: object, body: bytes) -> None:
@@ -166,6 +166,15 @@ class TestDeclareQueue:
                 'x-dead-letter-exchange': 'dlx-orders',
                 'x-dead-letter-routing-key': 'dlq-orders',
             },
+        )
+
+    def test_queue_config_with_queue_type_declared(self, mock_channel: MagicMock) -> None:
+        config = QueueConfig(name='orders', queue_type=QueueType.QUORUM)
+        Consumer(queue=config)._declare_queue(channel=mock_channel)
+        mock_channel.queue_declare.assert_called_once_with(
+            queue='orders',
+            durable=True,
+            arguments={'x-queue-type': 'quorum'},
         )
 
 

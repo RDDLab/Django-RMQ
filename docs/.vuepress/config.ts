@@ -4,36 +4,70 @@ import { viteBundler } from "@vuepress/bundler-vite";
 
 const currentYear = new Date().getFullYear();
 
-const enSidebar = [
-  { text: "Home", link: "/en/" },
-  { text: "Getting Started", link: "/en/getting-started.html" },
-  { text: "Configuration", link: "/en/configuration.html" },
-  { text: "Producers", link: "/en/producers.html" },
-  { text: "Consumers", link: "/en/consumers.html" },
-  { text: "Topology", link: "/en/topology.html" },
-  { text: "Registries", link: "/en/registries.html" },
-  { text: "Management Commands", link: "/en/management-commands.html" },
-  { text: "Reliability", link: "/en/reliability.html" },
-  { text: "Multiple Connections", link: "/en/multiple-connections.html" },
-  { text: "Testing", link: "/en/testing.html" },
-  { text: "API Reference", link: "/en/api-reference.html" },
-  { text: "Contribution Guide", link: "/en/contrib.html" },
+const enSidebar_1_0_5 = [
+  { text: "Home", link: "/en/1.0.5/" },
+  { text: "Getting Started", link: "/en/1.0.5/getting-started.html" },
+  { text: "Configuration", link: "/en/1.0.5/configuration.html" },
+  { text: "Producers", link: "/en/1.0.5/producers.html" },
+  { text: "Consumers", link: "/en/1.0.5/consumers.html" },
+  { text: "Topology", link: "/en/1.0.5/topology.html" },
+  { text: "Registries", link: "/en/1.0.5/registries.html" },
+  { text: "Management Commands", link: "/en/1.0.5/management-commands.html" },
+  { text: "Reliability", link: "/en/1.0.5/reliability.html" },
+  { text: "Multiple Connections", link: "/en/1.0.5/multiple-connections.html" },
+  { text: "Clusters", link: "/en/1.0.5/clusters.html" },
+  { text: "Testing", link: "/en/1.0.5/testing.html" },
+  { text: "API Reference", link: "/en/1.0.5/api-reference.html" },
+  { text: "Contribution Guide", link: "/en/1.0.5/contrib.html" },
 ];
 
-const ruSidebar = [
-  { text: "Главная", link: "/ru/" },
-  { text: "Начало работы", link: "/ru/getting-started.html" },
-  { text: "Конфигурация", link: "/ru/configuration.html" },
-  { text: "Продюсеры", link: "/ru/producers.html" },
-  { text: "Потребители", link: "/ru/consumers.html" },
-  { text: "Топология", link: "/ru/topology.html" },
-  { text: "Реестры", link: "/ru/registries.html" },
-  { text: "Команды управления", link: "/ru/management-commands.html" },
-  { text: "Надёжность", link: "/ru/reliability.html" },
-  { text: "Несколько подключений", link: "/ru/multiple-connections.html" },
-  { text: "Тестирование", link: "/ru/testing.html" },
-  { text: "Справочник API", link: "/ru/api-reference.html" },
-  { text: "Руководство по участию в разработке", link: "/ru/contrib.html" },
+const enSidebar_1_0_4 = [
+  { text: "Home", link: "/en/1.0.4/" },
+  { text: "Getting Started", link: "/en/1.0.4/getting-started.html" },
+  { text: "Configuration", link: "/en/1.0.4/configuration.html" },
+  { text: "Producers", link: "/en/1.0.4/producers.html" },
+  { text: "Consumers", link: "/en/1.0.4/consumers.html" },
+  { text: "Topology", link: "/en/1.0.4/topology.html" },
+  { text: "Registries", link: "/en/1.0.4/registries.html" },
+  { text: "Management Commands", link: "/en/1.0.4/management-commands.html" },
+  { text: "Reliability", link: "/en/1.0.4/reliability.html" },
+  { text: "Multiple Connections", link: "/en/1.0.4/multiple-connections.html" },
+  { text: "Testing", link: "/en/1.0.4/testing.html" },
+  { text: "API Reference", link: "/en/1.0.4/api-reference.html" },
+  { text: "Contribution Guide", link: "/en/1.0.4/contrib.html" },
+];
+
+const ruSidebar_1_0_5 = [
+  { text: "Главная", link: "/ru/1.0.5/" },
+  { text: "Начало работы", link: "/ru/1.0.5/getting-started.html" },
+  { text: "Конфигурация", link: "/ru/1.0.5/configuration.html" },
+  { text: "Продюсеры", link: "/ru/1.0.5/producers.html" },
+  { text: "Потребители", link: "/ru/1.0.5/consumers.html" },
+  { text: "Топология", link: "/ru/1.0.5/topology.html" },
+  { text: "Реестры", link: "/ru/1.0.5/registries.html" },
+  { text: "Команды управления", link: "/ru/1.0.5/management-commands.html" },
+  { text: "Надёжность", link: "/ru/1.0.5/reliability.html" },
+  { text: "Несколько подключений", link: "/ru/1.0.5/multiple-connections.html" },
+  { text: "Кластеры", link: "/ru/1.0.5/clusters.html" },
+  { text: "Тестирование", link: "/ru/1.0.5/testing.html" },
+  { text: "Справочник API", link: "/ru/1.0.5/api-reference.html" },
+  { text: "Руководство по участию в разработке", link: "/ru/1.0.5/contrib.html" },
+];
+
+const ruSidebar_1_0_4 = [
+  { text: "Главная", link: "/ru/1.0.4/" },
+  { text: "Начало работы", link: "/ru/1.0.4/getting-started.html" },
+  { text: "Конфигурация", link: "/ru/1.0.4/configuration.html" },
+  { text: "Продюсеры", link: "/ru/1.0.4/producers.html" },
+  { text: "Потребители", link: "/ru/1.0.4/consumers.html" },
+  { text: "Топология", link: "/ru/1.0.4/topology.html" },
+  { text: "Реестры", link: "/ru/1.0.4/registries.html" },
+  { text: "Команды управления", link: "/ru/1.0.4/management-commands.html" },
+  { text: "Надёжность", link: "/ru/1.0.4/reliability.html" },
+  { text: "Несколько подключений", link: "/ru/1.0.4/multiple-connections.html" },
+  { text: "Тестирование", link: "/ru/1.0.4/testing.html" },
+  { text: "Справочник API", link: "/ru/1.0.4/api-reference.html" },
+  { text: "Руководство по участию в разработке", link: "/ru/1.0.4/contrib.html" },
 ];
 
 export default defineUserConfig({
@@ -118,36 +152,56 @@ export default defineUserConfig({
         sidebar: false,
       },
       "/en/": {
-        sidebar: enSidebar,
+        sidebar: {
+          "/en/1.0.5/": enSidebar_1_0_5,
+          "/en/1.0.4/": enSidebar_1_0_4,
+        },
         navbar: [
           {
             text: "Guide",
-            link: "/en/getting-started.html",
+            link: "/en/1.0.5/getting-started.html",
           },
           {
             text: "API Reference",
-            link: "/en/api-reference.html",
+            link: "/en/1.0.5/api-reference.html",
           },
           {
             text: "Contributing",
-            link: "/en/contrib.html",
+            link: "/en/1.0.5/contrib.html",
+          },
+          {
+            text: "Version",
+            children: [
+              { text: "1.0.5 (latest)", link: "/en/1.0.5/" },
+              { text: "1.0.4", link: "/en/1.0.4/" },
+            ],
           },
         ],
       },
       "/ru/": {
-        sidebar: ruSidebar,
+        sidebar: {
+          "/ru/1.0.5/": ruSidebar_1_0_5,
+          "/ru/1.0.4/": ruSidebar_1_0_4,
+        },
         navbar: [
           {
             text: "Руководство",
-            link: "/ru/getting-started.html",
+            link: "/ru/1.0.5/getting-started.html",
           },
           {
             text: "Справочник API",
-            link: "/ru/api-reference.html",
+            link: "/ru/1.0.5/api-reference.html",
           },
           {
             text: "Участие в разработке",
-            link: "/ru/contrib.html",
+            link: "/ru/1.0.5/contrib.html",
+          },
+          {
+            text: "Версия",
+            children: [
+              { text: "1.0.5 (актуальная)", link: "/ru/1.0.5/" },
+              { text: "1.0.4", link: "/ru/1.0.4/" },
+            ],
           },
         ],
       },

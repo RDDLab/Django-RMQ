@@ -1,0 +1,69 @@
+x-rabbit-common: &rabbit-common
+  image: ${RABBITMQ_IMAGE:-rabbitmq:4.3.1-management-alpine}
+  environment: &rabbit-env
+    RABBITMQ_DEFAULT_USER: guest
+    RABBITMQ_DEFAULT_PASS: guest
+    RABBITMQ_DEFAULT_VHOST: /
+  configs:
+    - source: rabbitmq_cluster_conf
+      target: /etc/rabbitmq/rabbitmq.conf
+    - source: rabbitmq_erlang_cookie
+      target: /var/lib/rabbitmq/.erlang.cookie
+      uid: "100"
+      gid: "101"
+      mode: 0400
+  healthcheck:
+    test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+    interval: 10s
+    timeout: 5s
+    retries: 10
+
+services:
+  rabbit1:
+    <<: *rabbit-common
+    container_name: django-rmq-cluster-rabbit1
+    hostname: rabbit1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  rabbit2:
+    <<: *rabbit-common
+    container_name: django-rmq-cluster-rabbit2
+    hostname: rabbit2
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    depends_on:
+      rabbit1:
+        condition: service_healthy
+
+  rabbit3:
+    <<: *rabbit-common
+    container_name: django-rmq-cluster-rabbit3
+    hostname: rabbit3
+    ports:
+      - "5674:5672"
+      - "15674:15672"
+    depends_on:
+      rabbit1:
+        condition: service_healthy
+
+configs:
+  rabbitmq_erlang_cookie:
+    content: "django-rmq-cluster-cookie"
+  rabbitmq_cluster_conf:
+    content: |
+      # Static cluster formation: nodes find each other by this fixed list.
+      # Node name is rabbit@<hostname>; hostname is set per service above.
+      cluster_formation.peer_discovery_backend = classic_config
+      cluster_formation.classic_config.nodes.1 = rabbit@rabbit1
+      cluster_formation.classic_config.nodes.2 = rabbit@rabbit2
+      cluster_formation.classic_config.nodes.3 = rabbit@rabbit3
+
+      # Allow the default user to connect over the network (not just loopback).
+      loopback_users = none
+
+      # New queues default to quorum (replicated across nodes via Raft), which
+      # is what makes data survive a node going down in the cluster.
+      default_queue_type = quorum
