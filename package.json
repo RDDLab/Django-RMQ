@@ -11,7 +11,7 @@
   },
   "packageManager": "npm@11.13.0",
   "dependencies": {
-    "@vuepress/bundler-vite": "2.0.0-rc.30",
+    "@vuepress/bundler-vite": "2.0.0-rc.31",
     "@vuepress/plugin-slimsearch": "2.0.0-rc.130",
     "markdown-it": "14.3.0",
     "mermaid": "11.16.0",
