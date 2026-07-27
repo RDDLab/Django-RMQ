@@ -2,7 +2,7 @@
 
 All notable changes to **Django-RMQ** are documented in this file.
 
-## [1.0.5] — Unreleased
+## [1.0.5] — 27.07.2026
 
 ### Added
 
