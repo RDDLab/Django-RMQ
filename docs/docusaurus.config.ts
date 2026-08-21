@@ -155,22 +155,23 @@ const config: Config = {
       hideOnScroll: false,
       items: [
         {
-          type: 'doc',
-          docId: 'getting-started',
+          to: '/docs/getting-started',
           label: 'Guide',
           position: 'left',
+          activeBaseRegex:
+            '/docs(?:/[\\d.]+)?(?!/api-reference(?:/|$)|/contrib(?:/|$))(?:/|$)',
         },
         {
-          type: 'doc',
-          docId: 'api-reference',
+          to: '/docs/api-reference',
           label: 'API Reference',
           position: 'left',
+          activeBaseRegex: '/docs(?:/[\\d.]+)?/api-reference(?:/|$)',
         },
         {
-          type: 'doc',
-          docId: 'contrib',
+          to: '/docs/contrib',
           label: 'Contributing',
           position: 'left',
+          activeBaseRegex: '/docs(?:/[\\d.]+)?/contrib(?:/|$)',
         },
         {
           type: 'docsVersionDropdown',
