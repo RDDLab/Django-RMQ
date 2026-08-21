@@ -9,7 +9,7 @@ const config: Config = {
 
   url: 'https://django-rmq.rdd-lab.com',
   baseUrl: '/',
-  trailingSlash: false,
+  trailingSlash: true,
   organizationName: 'RDDLab',
   projectName: 'Django-RMQ',
 

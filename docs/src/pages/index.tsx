@@ -1,5 +1,4 @@
 import {useState, type ReactNode} from 'react';
-import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
@@ -183,41 +182,43 @@ export default function Home(): ReactNode {
   return (
     <Layout title={copy.title} description={copy.description}>
       <header className={styles.hero}>
-        <div className={clsx('container', styles.heroInner)}>
-          <img
-            className={styles.heroMark}
-            src={logoSrc}
-            alt="Django-RMQ"
-            width={380}
-            height={68}
-          />
-          <p className={styles.kicker}>
-            {copy.kicker}
-            <span className={styles.version}>{versionBadge(latestVersion.label)}</span>
-          </p>
-          <Heading as="h1" className={styles.heroTitle}>
-            {copy.heroTitle}
-          </Heading>
-          <p className={styles.heroLead}>{copy.lead}</p>
-          <div className={styles.actions}>
-            <Link className="button button--primary button--lg" to="/docs/getting-started">
-              {copy.getStarted}
-            </Link>
-            <Link className="button button--secondary button--lg" to="/docs/api-reference">
-              {copy.api}
-            </Link>
-            <Link
-              className="button button--secondary button--lg"
-              to="https://github.com/RDDLab/Django-RMQ"
-            >
-              {copy.github}
-            </Link>
+        <div className="container">
+          <div className={styles.heroInner}>
+            <img
+              className={styles.heroMark}
+              src={logoSrc}
+              alt="Django-RMQ"
+              width={380}
+              height={68}
+            />
+            <p className={styles.kicker}>
+              {copy.kicker}
+              <span className={styles.version}>{versionBadge(latestVersion.label)}</span>
+            </p>
+            <Heading as="h1" className={styles.heroTitle}>
+              {copy.heroTitle}
+            </Heading>
+            <p className={styles.heroLead}>{copy.lead}</p>
+            <div className={styles.actions}>
+              <Link className="button button--primary button--lg" to="/docs/getting-started">
+                {copy.getStarted}
+              </Link>
+              <Link className="button button--secondary button--lg" to="/docs/api-reference">
+                {copy.api}
+              </Link>
+              <Link
+                className="button button--secondary button--lg"
+                to="https://github.com/RDDLab/Django-RMQ"
+              >
+                {copy.github}
+              </Link>
+            </div>
+            <InstallCommand
+              command={copy.install}
+              copyLabel={copy.copyInstall}
+              copiedLabel={copy.copiedInstall}
+            />
           </div>
-          <InstallCommand
-            command={copy.install}
-            copyLabel={copy.copyInstall}
-            copiedLabel={copy.copiedInstall}
-          />
         </div>
       </header>
 

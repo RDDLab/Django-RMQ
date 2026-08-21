@@ -11,6 +11,7 @@
   display: grid;
   gap: 1.25rem;
   max-width: 760px;
+  margin-inline: auto;
 }
 
 .heroMark {
