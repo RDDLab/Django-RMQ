@@ -2,6 +2,13 @@
 
 All notable changes to **Django-RMQ** are documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Documentation site migrated from VuePress 2 (`vuepress-theme-hope`) to Docusaurus 3 and lives entirely under `docs/`.
+  Content, English/Russian locales, and versions 1.0.5 / 1.0.4 stay in place.
+
 ## [1.0.5] — 27.07.2026
 
 ### Added

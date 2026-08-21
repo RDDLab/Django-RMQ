@@ -1,0 +1,47 @@
+{
+  "name": "django-rmq-docs",
+  "repository": "git@github.com:RDDLab/Django-RMQ.git",
+  "author": "Raman Marozau <r.morozov@rdd-lab.com>",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "docs:dev": "node scripts/docs-dev.mjs",
+    "docs:dev:en": "docusaurus start --port 3000",
+    "docs:dev:ru": "DOCUSAURUS_GENERATED_FILES_DIR_NAME=.docusaurus-ru docusaurus start --port 3001 --locale ru --no-open",
+    "docs:build": "docusaurus build",
+    "docs:serve": "docusaurus serve",
+    "docs:clear": "docusaurus clear && rm -rf .docusaurus-ru",
+    "docs:write-translations": "docusaurus write-translations"
+  },
+  "packageManager": "npm@11.13.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 5 safari version"
+    ]
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/preset-classic": "3.10.2",
+    "@easyops-cn/docusaurus-search-local": "0.52.1",
+    "clsx": "^2.1.1",
+    "prism-react-renderer": "^2.4.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.2",
+    "@docusaurus/tsconfig": "3.10.2",
+    "@docusaurus/types": "3.10.2",
+    "typescript": "~5.9.2"
+  }
+}

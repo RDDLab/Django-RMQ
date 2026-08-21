@@ -1,0 +1,143 @@
+/* Brand: Django-RMQ sky (#0284c7). CPA layout as a starting point, not a clone. */
+
+:root {
+  --ifm-color-primary: #0284c7;
+  --ifm-color-primary-dark: #0369a1;
+  --ifm-color-primary-darker: #075985;
+  --ifm-color-primary-darkest: #0c4a6e;
+  --ifm-color-primary-light: #0ea5e9;
+  --ifm-color-primary-lighter: #38bdf8;
+  --ifm-color-primary-lightest: #7dd3fc;
+  --ifm-code-font-size: 95%;
+  --ifm-code-background: color-mix(in srgb, var(--ifm-color-emphasis-200) 55%, transparent);
+  --ifm-code-padding-horizontal: 0.28rem;
+  --ifm-code-padding-vertical: 0.08rem;
+  --ifm-code-border-radius: 0.28rem;
+  --ifm-font-size-base: 16px;
+  --ifm-line-height-base: 1.65;
+  --ifm-heading-font-weight: 700;
+  --ifm-global-radius: 0.5rem;
+  --ifm-navbar-height: 3.75rem;
+  --docusaurus-highlighted-code-line-bg: rgba(2, 132, 199, 0.08);
+  --rmq-card-border: rgba(2, 132, 199, 0.14);
+  --rmq-hero-glow: rgba(2, 132, 199, 0.18);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #38bdf8;
+  --ifm-color-primary-dark: #0ea5e9;
+  --ifm-color-primary-darker: #0284c7;
+  --ifm-color-primary-darkest: #0369a1;
+  --ifm-color-primary-light: #7dd3fc;
+  --ifm-color-primary-lighter: #bae6fd;
+  --ifm-color-primary-lightest: #e0f2fe;
+  --ifm-background-color: #121417;
+  --ifm-background-surface-color: #1b1e24;
+  --ifm-navbar-background-color: #16181d;
+  --ifm-footer-background-color: #101215;
+  --ifm-code-background: rgba(255, 255, 255, 0.08);
+  --docusaurus-highlighted-code-line-bg: rgba(56, 189, 248, 0.12);
+  --rmq-card-border: rgba(56, 189, 248, 0.16);
+  --rmq-hero-glow: rgba(14, 165, 233, 0.22);
+}
+
+.navbar__logo {
+  height: 28px;
+}
+
+.navbar__logo img {
+  height: 28px;
+  width: auto;
+  max-width: 168px;
+}
+
+.navbar__title {
+  display: none;
+}
+
+.menu__link {
+  font-size: 0.9rem;
+  border-radius: 0.4rem;
+}
+
+.menu__link--active:not(.menu__link--sublist) {
+  background: color-mix(in srgb, var(--ifm-color-primary) 14%, transparent);
+  font-weight: 600;
+}
+
+.theme-doc-sidebar-container {
+  --doc-sidebar-width: 272px;
+}
+
+div[class^='codeBlockContainer'] {
+  box-shadow: none;
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+[data-theme='dark'] div[class^='codeBlockContainer'] {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #16181d;
+}
+
+/* Inline code: no Infima chip border, so `settings.py` does not look like a button. */
+:not(pre) > code {
+  border: none;
+  box-shadow: none;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* Shell fences: Prism paints `install`, `cd`, `pip` as random keywords. Keep them as commands. */
+.language-bash .token.function,
+.language-bash .token.builtin,
+.language-bash .token.important,
+.language-sh .token.function,
+.language-sh .token.builtin,
+.language-shell .token.function,
+.language-shell .token.builtin,
+.language-console .token.function,
+.language-console .token.builtin {
+  color: inherit;
+  font-weight: inherit;
+}
+
+.footer {
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+[data-theme='dark'] .footer {
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+.navbar {
+  box-shadow: none;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+[data-theme='dark'] .navbar {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.markdown table {
+  display: table;
+  width: 100%;
+}
+
+.theme-doc-markdown {
+  overflow-x: auto;
+}
+
+.markdown th,
+.markdown td {
+  vertical-align: middle;
+}
+
+.markdown th:first-child,
+.markdown td:first-child,
+.markdown table code {
+  white-space: nowrap;
+}

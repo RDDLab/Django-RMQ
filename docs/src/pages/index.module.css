@@ -1,0 +1,211 @@
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 4.5rem 0 3.5rem;
+  background:
+    radial-gradient(900px 420px at 12% -10%, var(--rmq-hero-glow), transparent 60%),
+    radial-gradient(700px 320px at 92% 0%, color-mix(in srgb, var(--ifm-color-primary) 10%, transparent), transparent 55%);
+}
+
+.heroInner {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 760px;
+}
+
+.heroMark {
+  width: min(100%, 380px);
+  height: auto;
+}
+
+.kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0;
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.95rem;
+}
+
+.version {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ifm-color-primary) 16%, transparent);
+  color: var(--ifm-color-primary-darkest);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+[data-theme='dark'] .version {
+  color: var(--ifm-color-primary-lighter);
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.heroLead {
+  margin: 0;
+  max-width: 42rem;
+  color: var(--ifm-color-content-secondary);
+  font-size: 1.15rem;
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.install {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.35rem;
+  padding: 0.85rem 1rem;
+  width: min(100%, 28rem);
+  border: 1px solid var(--rmq-card-border);
+  border-radius: 0.7rem;
+  background: var(--ifm-background-surface-color);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.92rem;
+}
+
+.install code {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  color: var(--ifm-color-primary-darker);
+}
+
+[data-theme='dark'] .install code {
+  color: var(--ifm-color-primary-light);
+}
+
+.installCopy {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ifm-color-content-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.installCopy:hover,
+.installCopy:focus-visible {
+  color: var(--ifm-color-primary);
+}
+
+.section {
+  padding: 3.25rem 0;
+}
+
+.sectionTitle {
+  margin-bottom: 1.5rem;
+  font-size: 1.65rem;
+}
+
+.grid3,
+.grid4,
+.guides {
+  display: grid;
+  gap: 1rem;
+}
+
+.grid3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.guides {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.card,
+.guide {
+  height: 100%;
+  padding: 1.2rem 1.25rem 1.3rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 0.85rem;
+  background: var(--ifm-background-surface-color);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.guide {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.card:hover,
+.guide:hover {
+  border-color: var(--ifm-color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--ifm-color-primary) 12%, transparent);
+  text-decoration: none;
+  color: inherit;
+}
+
+.step {
+  display: inline-block;
+  margin-bottom: 0.65rem;
+  color: var(--ifm-color-primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.card h3,
+.guide h3 {
+  margin-bottom: 0.45rem;
+  font-size: 1.05rem;
+}
+
+.card p,
+.guide p {
+  margin: 0;
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 996px) {
+  .grid3,
+  .grid4,
+  .guides {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 3rem 0 2.25rem;
+  }
+
+  .grid3,
+  .grid4,
+  .guides {
+    grid-template-columns: 1fr;
+  }
+
+  .install {
+    width: 100%;
+  }
+}

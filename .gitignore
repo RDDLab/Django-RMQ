@@ -220,3 +220,11 @@ __marimo__/
 # Custom
 .temp
 node_modules
+
+# Docusaurus
+.docusaurus
+.docusaurus-ru
+/build
+docs/.docusaurus
+docs/.docusaurus-ru
+docs/build

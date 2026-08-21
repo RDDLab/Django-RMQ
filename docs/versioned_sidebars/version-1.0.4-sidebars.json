@@ -1,0 +1,17 @@
+{
+  "docs": [
+    "intro",
+    "getting-started",
+    "configuration",
+    "producers",
+    "consumers",
+    "topology",
+    "registries",
+    "management-commands",
+    "reliability",
+    "multiple-connections",
+    "testing",
+    "api-reference",
+    "contrib"
+  ]
+}

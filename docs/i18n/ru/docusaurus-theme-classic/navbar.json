@@ -1,0 +1,18 @@
+{
+  "item.label.Guide": {
+    "message": "Руководство",
+    "description": "Navbar item with label Guide"
+  },
+  "item.label.API Reference": {
+    "message": "Справочник API",
+    "description": "Navbar item with label API Reference"
+  },
+  "item.label.Contributing": {
+    "message": "Участие в разработке",
+    "description": "Navbar item with label Contributing"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}
