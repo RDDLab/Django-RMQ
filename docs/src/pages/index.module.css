@@ -1,7 +1,7 @@
 .hero {
   position: relative;
   overflow: hidden;
-  padding: 5rem 0 4rem;
+  padding: 5rem 0 2.25rem;
 }
 
 .heroRow {
@@ -133,7 +133,11 @@
 }
 
 .section {
-  padding: 3.25rem 0;
+  padding: 2rem 0 0;
+}
+
+.section:last-child {
+  padding-bottom: 3rem;
 }
 
 .sectionTitle {
