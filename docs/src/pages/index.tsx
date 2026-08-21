@@ -12,7 +12,7 @@ type Copy = {
   title: string;
   description: string;
   kicker: string;
-  heroTitle: string;
+  heroTitle: {text: string; highlight?: boolean}[];
   lead: string;
   getStarted: string;
   api: string;
@@ -32,7 +32,12 @@ const en: Copy = {
   title: 'Django-RMQ',
   description: 'Django RabbitMQ wrappers and tools over Pika',
   kicker: 'Django RabbitMQ wrappers over Pika',
-  heroTitle: 'Predictable messaging for Django',
+  heroTitle: [
+    {text: 'Predictable '},
+    {text: 'messaging', highlight: true},
+    {text: ' for '},
+    {text: 'Django', highlight: true},
+  ],
   lead: 'Publish and consume RabbitMQ messages from a Django project without turning it into a task queue. Thin Pika wrappers, native settings, and infrastructure code that stays close to your app.',
   getStarted: 'Get started',
   api: 'API reference',
@@ -89,7 +94,12 @@ const ru: Copy = {
   title: 'Django-RMQ',
   description: 'Обёртки и инструменты RabbitMQ для Django поверх Pika',
   kicker: 'Обёртки RabbitMQ для Django поверх Pika',
-  heroTitle: 'Предсказуемый обмен сообщениями для Django',
+  heroTitle: [
+    {text: 'Предсказуемый '},
+    {text: 'обмен сообщениями', highlight: true},
+    {text: ' для '},
+    {text: 'Django', highlight: true},
+  ],
   lead: 'Публикуйте и потребляйте сообщения RabbitMQ из Django-проекта, не превращая его в очередь задач. Тонкие обёртки над Pika, нативные настройки и инфраструктурный код рядом с приложением.',
   getStarted: 'Начало работы',
   api: 'Справочник API',
@@ -183,41 +193,47 @@ export default function Home(): ReactNode {
     <Layout title={copy.title} description={copy.description}>
       <header className={styles.hero}>
         <div className="container">
-          <div className={styles.heroInner}>
-            <img
-              className={styles.heroMark}
-              src={logoSrc}
-              alt="Django-RMQ"
-              width={380}
-              height={68}
-            />
-            <p className={styles.kicker}>
-              {copy.kicker}
-              <span className={styles.version}>{versionBadge(latestVersion.label)}</span>
-            </p>
-            <Heading as="h1" className={styles.heroTitle}>
-              {copy.heroTitle}
-            </Heading>
-            <p className={styles.heroLead}>{copy.lead}</p>
-            <div className={styles.actions}>
-              <Link className="button button--primary button--lg" to="/docs/getting-started">
-                {copy.getStarted}
-              </Link>
-              <Link className="button button--secondary button--lg" to="/docs/api-reference">
-                {copy.api}
-              </Link>
-              <Link
-                className="button button--secondary button--lg"
-                to="https://github.com/RDDLab/Django-RMQ"
-              >
-                {copy.github}
-              </Link>
+          <div className={styles.heroRow}>
+            <div className={styles.heroCopy}>
+              <p className={styles.kicker}>
+                {copy.kicker}
+                <span className={styles.version}>{versionBadge(latestVersion.label)}</span>
+              </p>
+              <Heading as="h1" className={styles.heroTitle}>
+                {copy.heroTitle.map((part) =>
+                  part.highlight ? (
+                    <span className={styles.gradient} key={part.text}>
+                      {part.text}
+                    </span>
+                  ) : (
+                    <span key={part.text}>{part.text}</span>
+                  ),
+                )}
+              </Heading>
+              <p className={styles.heroLead}>{copy.lead}</p>
+              <div className={styles.actions}>
+                <Link className="button button--primary button--lg" to="/docs/getting-started">
+                  {copy.getStarted}
+                </Link>
+                <Link className="button button--secondary button--lg" to="/docs/api-reference">
+                  {copy.api}
+                </Link>
+                <Link
+                  className="button button--secondary button--lg"
+                  to="https://github.com/RDDLab/Django-RMQ"
+                >
+                  {copy.github}
+                </Link>
+              </div>
+              <InstallCommand
+                command={copy.install}
+                copyLabel={copy.copyInstall}
+                copiedLabel={copy.copiedInstall}
+              />
             </div>
-            <InstallCommand
-              command={copy.install}
-              copyLabel={copy.copyInstall}
-              copiedLabel={copy.copiedInstall}
-            />
+            <div className={styles.heroVisual} aria-hidden="true">
+              <img className={styles.heroMark} src={logoSrc} alt="" width={420} height={76} />
+            </div>
           </div>
         </div>
       </header>

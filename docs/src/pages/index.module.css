@@ -1,22 +1,35 @@
 .hero {
   position: relative;
   overflow: hidden;
-  padding: 4.5rem 0 3.5rem;
-  background:
-    radial-gradient(900px 420px at 12% -10%, var(--rmq-hero-glow), transparent 60%),
-    radial-gradient(700px 320px at 92% 0%, color-mix(in srgb, var(--ifm-color-primary) 10%, transparent), transparent 55%);
+  padding: 5rem 0 4rem;
 }
 
-.heroInner {
+.heroRow {
+  position: relative;
   display: grid;
-  gap: 1.25rem;
-  max-width: 760px;
-  margin-inline: auto;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: center;
+  gap: 3rem;
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.15rem;
+  text-align: left;
+}
+
+.heroVisual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .heroMark {
-  width: min(100%, 380px);
+  width: min(100%, 420px);
   height: auto;
+  filter: drop-shadow(0 18px 40px color-mix(in srgb, var(--ifm-color-primary) 28%, transparent));
 }
 
 .kicker {
@@ -32,29 +45,36 @@
 .version {
   display: inline-flex;
   align-items: center;
-  padding: 0.15rem 0.55rem;
+  padding: 0.12rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--ifm-color-primary) 45%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--ifm-color-primary) 16%, transparent);
-  color: var(--ifm-color-primary-darkest);
-  font-size: 0.78rem;
+  background: transparent;
+  color: var(--ifm-color-primary);
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-[data-theme='dark'] .version {
-  color: var(--ifm-color-primary-lighter);
+  letter-spacing: 0.04em;
 }
 
 .heroTitle {
   margin: 0;
-  font-size: clamp(2.4rem, 5vw, 3.4rem);
-  line-height: 1.1;
+  max-width: 14em;
+  text-align: left;
+  font-size: clamp(2.6rem, 5vw, 3.8rem);
+  line-height: 1.08;
   letter-spacing: -0.03em;
+}
+
+.gradient {
+  background: linear-gradient(120deg, var(--ifm-color-primary-light) 0%, var(--ifm-color-primary-dark) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
 }
 
 .heroLead {
   margin: 0;
-  max-width: 42rem;
+  max-width: 38rem;
+  text-align: left;
   color: var(--ifm-color-content-secondary);
   font-size: 1.15rem;
   line-height: 1.6;
@@ -63,8 +83,8 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 0.75rem;
-  margin-top: 0.5rem;
 }
 
 .install {
@@ -72,7 +92,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-top: 0.35rem;
+  margin: 0;
   padding: 0.85rem 1rem;
   width: min(100%, 28rem);
   border: 1px solid var(--rmq-card-border);
@@ -188,6 +208,23 @@
 }
 
 @media (max-width: 996px) {
+  .heroRow {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .heroVisual {
+    order: -1;
+  }
+
+  .heroMark {
+    width: min(100%, 280px);
+  }
+
+  .heroTitle {
+    max-width: none;
+  }
+
   .grid3,
   .grid4,
   .guides {

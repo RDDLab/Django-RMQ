@@ -20,7 +20,8 @@
   --ifm-navbar-height: 3.75rem;
   --docusaurus-highlighted-code-line-bg: rgba(2, 132, 199, 0.08);
   --rmq-card-border: rgba(2, 132, 199, 0.14);
-  --rmq-hero-glow: rgba(2, 132, 199, 0.18);
+  --rmq-hero-glow-core: rgba(14, 165, 233, 0.2);
+  --rmq-hero-glow-mid: rgba(2, 132, 199, 0.08);
 }
 
 [data-theme='dark'] {
@@ -38,7 +39,8 @@
   --ifm-code-background: rgba(255, 255, 255, 0.08);
   --docusaurus-highlighted-code-line-bg: rgba(56, 189, 248, 0.12);
   --rmq-card-border: rgba(56, 189, 248, 0.16);
-  --rmq-hero-glow: rgba(14, 165, 233, 0.22);
+  --rmq-hero-glow-core: rgba(56, 189, 248, 0.48);
+  --rmq-hero-glow-mid: rgba(14, 165, 233, 0.2);
 }
 
 .navbar__logo {
