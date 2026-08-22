@@ -27,8 +27,9 @@
 }
 
 .heroMark {
-  width: min(100%, 420px);
+  width: min(100%, 220px);
   height: auto;
+  border-radius: 28%;
   filter: drop-shadow(0 18px 40px color-mix(in srgb, var(--ifm-color-primary) 28%, transparent));
 }
 
@@ -222,7 +223,7 @@
   }
 
   .heroMark {
-    width: min(100%, 280px);
+    width: min(100%, 160px);
   }
 
   .heroTitle {

@@ -1,13 +1,13 @@
-/* Brand: Django-RMQ sky (#0284c7). CPA layout as a starting point, not a clone. */
+/* Brand: Django-RMQ orange (#ff6600), same as RabbitMQ. Layout matches Django-Chassis. */
 
 :root {
-  --ifm-color-primary: #0284c7;
-  --ifm-color-primary-dark: #0369a1;
-  --ifm-color-primary-darker: #075985;
-  --ifm-color-primary-darkest: #0c4a6e;
-  --ifm-color-primary-light: #0ea5e9;
-  --ifm-color-primary-lighter: #38bdf8;
-  --ifm-color-primary-lightest: #7dd3fc;
+  --ifm-color-primary: #ff6600;
+  --ifm-color-primary-dark: #e65c00;
+  --ifm-color-primary-darker: #cc5200;
+  --ifm-color-primary-darkest: #993d00;
+  --ifm-color-primary-light: #ff751a;
+  --ifm-color-primary-lighter: #ff8533;
+  --ifm-color-primary-lightest: #ffb380;
   --ifm-code-font-size: 95%;
   --ifm-code-background: color-mix(in srgb, var(--ifm-color-emphasis-200) 55%, transparent);
   --ifm-code-padding-horizontal: 0.28rem;
@@ -18,29 +18,29 @@
   --ifm-heading-font-weight: 700;
   --ifm-global-radius: 0.5rem;
   --ifm-navbar-height: 3.75rem;
-  --docusaurus-highlighted-code-line-bg: rgba(2, 132, 199, 0.08);
-  --rmq-card-border: rgba(2, 132, 199, 0.14);
-  --rmq-hero-glow-core: rgba(14, 165, 233, 0.2);
-  --rmq-hero-glow-mid: rgba(2, 132, 199, 0.08);
+  --docusaurus-highlighted-code-line-bg: rgba(255, 102, 0, 0.08);
+  --rmq-card-border: rgba(255, 102, 0, 0.14);
+  --rmq-hero-glow-core: rgba(255, 102, 0, 0.2);
+  --rmq-hero-glow-mid: rgba(255, 102, 0, 0.08);
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #38bdf8;
-  --ifm-color-primary-dark: #0ea5e9;
-  --ifm-color-primary-darker: #0284c7;
-  --ifm-color-primary-darkest: #0369a1;
-  --ifm-color-primary-light: #7dd3fc;
-  --ifm-color-primary-lighter: #bae6fd;
-  --ifm-color-primary-lightest: #e0f2fe;
+  --ifm-color-primary: #ff8533;
+  --ifm-color-primary-dark: #ff751a;
+  --ifm-color-primary-darker: #ff6600;
+  --ifm-color-primary-darkest: #e65c00;
+  --ifm-color-primary-light: #ff944d;
+  --ifm-color-primary-lighter: #ffb380;
+  --ifm-color-primary-lightest: #ffd9bf;
   --ifm-background-color: #121417;
   --ifm-background-surface-color: #1b1e24;
   --ifm-navbar-background-color: #16181d;
   --ifm-footer-background-color: #101215;
   --ifm-code-background: rgba(255, 255, 255, 0.08);
-  --docusaurus-highlighted-code-line-bg: rgba(56, 189, 248, 0.12);
-  --rmq-card-border: rgba(56, 189, 248, 0.16);
-  --rmq-hero-glow-core: rgba(56, 189, 248, 0.48);
-  --rmq-hero-glow-mid: rgba(14, 165, 233, 0.2);
+  --docusaurus-highlighted-code-line-bg: rgba(255, 133, 51, 0.12);
+  --rmq-card-border: rgba(255, 133, 51, 0.16);
+  --rmq-hero-glow-core: rgba(255, 133, 51, 0.48);
+  --rmq-hero-glow-mid: rgba(255, 117, 26, 0.2);
 }
 
 .navbar__logo {

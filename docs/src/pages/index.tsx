@@ -186,7 +186,7 @@ function InstallCommand({
 export default function Home(): ReactNode {
   const {i18n} = useDocusaurusContext();
   const copy = i18n.currentLocale === 'ru' ? ru : en;
-  const logoSrc = useBaseUrl('/img/logo.svg');
+  const iconSrc = useBaseUrl('/img/icon.svg');
   const latestVersion = useLatestVersion(undefined);
 
   return (
@@ -232,7 +232,7 @@ export default function Home(): ReactNode {
               />
             </div>
             <div className={styles.heroVisual} aria-hidden="true">
-              <img className={styles.heroMark} src={logoSrc} alt="" width={420} height={76} />
+              <img className={styles.heroMark} src={iconSrc} alt="" width={220} height={220} />
             </div>
           </div>
         </div>

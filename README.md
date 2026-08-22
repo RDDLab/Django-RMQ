@@ -1,4 +1,6 @@
-![Logo](https://github.com/RDDLab/Django-RMQ/raw/main/docs/static/img/logo.png)
+![Icon](https://github.com/RDDLab/Django-RMQ/raw/main/docs/static/img/icon.svg)
+
+![Logo](https://github.com/RDDLab/Django-RMQ/raw/main/docs/static/img/logo.svg)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=for-the-badge)](https://docs.astral.sh/ruff)

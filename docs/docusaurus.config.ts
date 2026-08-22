@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Django-RMQ',
   tagline: 'Django RabbitMQ Wrappers & Tools over Pika',
-  favicon: 'img/favicon.png',
+  favicon: 'img/favicon.svg',
 
   url: 'https://django-rmq.rdd-lab.com',
   baseUrl: '/',
@@ -14,6 +14,14 @@ const config: Config = {
   projectName: 'Django-RMQ',
 
   headTags: [
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        type: 'image/svg+xml',
+        href: '/img/favicon.svg',
+      },
+    },
     {
       tagName: 'link',
       attributes: {
