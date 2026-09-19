@@ -35,7 +35,7 @@
     "@easyops-cn/docusaurus-search-local": "0.52.1",
     "clsx": "^2.1.1",
     "prism-react-renderer": "^2.4.1",
-    "react": "^19.1.1",
+    "react": "^19.3.0",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
