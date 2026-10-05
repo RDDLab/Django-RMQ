@@ -123,7 +123,7 @@ from django_rmq.producer import Producer
 
 producer: Producer = Producer(queue='orders')
 
-producer.publish(body=b'first')   # opens the producer connection
+producer.publish(body=b'first')  # opens the producer connection
 
 # force-close the connection from outside...
 
@@ -157,7 +157,7 @@ from django_rmq.queues.queue_config import QueueConfig
 consumer: Consumer = Consumer(
     queue=QueueConfig(name='orders'),
     reconnect_initial_backoff=0.5,  # seconds; defaults to alias config value
-    reconnect_max_backoff=60.0,     # seconds; defaults to alias config value
+    reconnect_max_backoff=60.0,  # seconds; defaults to alias config value
 )
 ```
 
@@ -203,6 +203,7 @@ unacknowledged and be redelivered after the consumer disconnects.
 from typing import Any
 from pika.adapters.blocking_connection import BlockingChannel
 
+
 @consumer
 def handle_order(
     ch: BlockingChannel,
@@ -228,9 +229,11 @@ queue_config: QueueConfig = QueueConfig(
 )
 consumer: Consumer = Consumer(queue=queue_config)
 
+
 @consumer
 def handler(ch: BlockingChannel, method: Any, props: Any, body: bytes) -> None:
-    raise ValueError('boom')   # nacked -> routed to dlx-orders / dlq-orders
+    raise ValueError('boom')  # nacked -> routed to dlx-orders / dlq-orders
+
 
 Producer(queue=queue_config).publish(body='{"will": "fail"}')
 ```

@@ -34,10 +34,7 @@ from django_rmq.registries.registry import ConsumersRegistry, get_consumers_regi
 
 ```python
 from pika.adapters.blocking_connection import BlockingChannel
-from pika.spec import (
-    Basic,
-    BasicProperties
-)
+from pika.spec import Basic, BasicProperties
 
 from django_rmq.consumer import Consumer
 from django_rmq.queues.queue_config import QueueConfig

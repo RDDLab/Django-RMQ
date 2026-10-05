@@ -66,6 +66,7 @@ from django_rmq.consumer import Consumer
 
 consumer: Consumer = Consumer(queue='orders')
 
+
 @consumer.handler
 def handle_order(
     ch: BlockingChannel,
@@ -91,6 +92,7 @@ from pika.spec import Basic, BasicProperties
 from django_rmq.consumer import Consumer
 
 consumer: Consumer = Consumer(queue='payments')
+
 
 @consumer
 def handle_payment(
@@ -160,9 +162,11 @@ from django_rmq.consumer import Consumer
 
 consumer: Consumer = Consumer(queue='orders')
 
+
 @consumer
 def handle_order(ch, method, props, body: bytes) -> None:
     ch.basic_ack(delivery_tag=method.delivery_tag)
+
 
 stop_event: threading.Event = threading.Event()
 # In production, start_consumers management command manages this for you.
@@ -228,6 +232,7 @@ queue_config: QueueConfig = QueueConfig(
     dead_letter_routing_key='dlq-orders',
 )
 consumer: Consumer = Consumer(queue=queue_config)
+
 
 @consumer
 def handle_order(
