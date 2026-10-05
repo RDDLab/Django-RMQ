@@ -178,6 +178,7 @@ needs arguments beyond what `QueueConfig` exposes:
 ```python
 from pika.adapters.blocking_connection import BlockingChannel
 
+
 def setup_quorum(channel: BlockingChannel) -> None:
     channel.queue_declare(
         queue='orders',

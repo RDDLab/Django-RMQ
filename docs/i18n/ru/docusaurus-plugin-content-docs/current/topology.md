@@ -71,6 +71,7 @@ from pika.exchange_type import ExchangeType
 
 from django_rmq.registries.setup_registry import SetupFn
 
+
 def setup_orders_topology(channel: BlockingChannel) -> None:
     channel.exchange_declare(
         exchange='orders',

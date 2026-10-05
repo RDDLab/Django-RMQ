@@ -156,10 +156,12 @@ from django_rmq.producer import Producer
 
 order_producer: Producer = Producer(queue='orders')
 
+
 @order_producer
 def create_order(order_id: int) -> str:
     # business logic here
     return json.dumps({'order_id': order_id})
+
 
 # Calling create_order publishes the returned JSON and also returns it.
 result: str = create_order(order_id=42)
