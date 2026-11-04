@@ -196,6 +196,32 @@ class MgmtApi:
         """
         self._request(method='DELETE', path=f'/api/vhosts/{quote(name, safe="")}')
 
+    def create_user(self, name: str, password: str) -> None:
+        """
+        Creates a user with no tags (no management access) and no permissions.
+        """
+        self._request(
+            method='PUT',
+            path=f'/api/users/{quote(name, safe="")}',
+            body={'password': password, 'tags': ''},
+        )
+
+    def set_permissions(self, user: str, configure: str, write: str, read: str) -> None:
+        """
+        Sets `user`'s configure/write/read permission regexes on this client's vhost.
+        """
+        self._request(
+            method='PUT',
+            path=f'/api/permissions/{quote(self._vhost, safe="")}/{quote(user, safe="")}',
+            body={'configure': configure, 'write': write, 'read': read},
+        )
+
+    def delete_user(self, name: str) -> None:
+        """
+        Deletes a user (idempotent — 404 is swallowed).
+        """
+        self._request(method='DELETE', path=f'/api/users/{quote(name, safe="")}')
+
 
 @pytest.fixture(scope='session')
 def broker_params() -> dict[str, Any]:
@@ -295,6 +321,22 @@ def names() -> Names:
         dlx=f'dlx-it-{suffix}',
         exchange=f'it-x-{suffix}',
     )
+
+
+@pytest.fixture
+def write_only_user_params(broker_params: dict[str, Any], mgmt_api: MgmtApi, names: Names) -> Iterator[dict[str, Any]]:
+    """
+    Creates a throwaway user with only the `write` permission on the test vhost
+    (`configure` and `read` are empty) — the minimal rights of a pure producer —
+    and returns a RABBITMQ_CONNECTIONS-style alias dict that logs in as it.
+    The user is deleted on teardown.
+    """
+    user: str = f'it-writer-{names.suffix}'
+    password: str = uuid.uuid4().hex
+    mgmt_api.create_user(name=user, password=password)
+    mgmt_api.set_permissions(user=user, configure='', write='.*', read='')
+    yield {**broker_params, 'USER': user, 'PASSWORD': password}
+    mgmt_api.delete_user(name=user)
 
 
 @pytest.fixture

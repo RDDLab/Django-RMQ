@@ -101,7 +101,7 @@ jobs:
     strategy:
       matrix:
         python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
-        rabbitmq-version: [ "3.13", "4.0", "4.1", "4.2", "4.3" ]
+        rabbitmq-version: [ "3.13", "4.0", "4.1", "4.2", "4.3", "4.4" ]
       fail-fast: true
 
     services:
@@ -161,7 +161,7 @@ jobs:
       fail-fast: true
 
     env:
-      RABBITMQ_IMAGE: rabbitmq:4.3-management-alpine
+      RABBITMQ_IMAGE: rabbitmq:4.4-management-alpine
       RMQ_HOST: localhost
       RMQ_PORT: 5672
       RMQ_MGMT_PORT: 15672

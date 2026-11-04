@@ -1,8 +1,10 @@
+from typing import Any
+
 import pytest
 from pika.exceptions import ChannelClosedByBroker, UnroutableError
 
 from django_rmq.producer import Producer
-from tests.integration.conftest import Names
+from tests.integration.conftest import MgmtApi, Names, poll
 
 pytestmark = pytest.mark.integration
 
@@ -35,3 +37,25 @@ class TestMandatory:
 
         with pytest.raises(ChannelClosedByBroker):
             producer.publish(body=b'no-such-queue')
+
+    def test_passive_declare_with_write_only_permission(
+        self,
+        write_only_user_params: dict[str, Any],
+        configure_real_rmq,
+        admin_channel,
+        mgmt_api: MgmtApi,
+        names: Names,
+    ):
+        # write_only_user_params comes first so the user outlives (is torn down
+        # after) the producer connection that configure_real_rmq closes.
+        # A pure producer typically holds only the `write` permission. Its passive
+        # queue_declare must still succeed: RabbitMQ 4.2.6 and 4.3.0 required
+        # `configure` for it (rabbitmq-server#16085), 4.2.7+/4.3.1+/4.4 accept any
+        # of configure/write/read (#16272). Guards against that regression.
+        admin_channel.queue_declare(queue=names.queue, durable=True)
+        configure_real_rmq(connections={'default': write_only_user_params})
+        producer: Producer = Producer(queue=names.queue)
+
+        producer.publish(body=b'write-only')
+
+        assert poll(predicate=lambda: mgmt_api.messages(name=names.queue) == 1)

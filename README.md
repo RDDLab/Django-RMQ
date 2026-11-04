@@ -13,7 +13,7 @@
 [![PyPI - Types](https://img.shields.io/pypi/types/django-rmq.svg?style=for-the-badge)](https://pypi.python.org/pypi/django-rmq)
 ---
 
-[![RabbitMQ Support](https://img.shields.io/static/v1?label=RabbitMQ%20Support&message=v3.13%20%7C%20v4.0%20%7C%20v4.1%20%7C%20v4.2%20%7C%20v4.3&color=ff6600&labelColor=555&style=for-the-badge)](https://www.rabbitmq.com/)
+[![RabbitMQ Support](https://img.shields.io/static/v1?label=RabbitMQ%20Support&message=v3.13%20%7C%20v4.0%20%7C%20v4.1%20%7C%20v4.2%20%7C%20v4.3%20%7C%20v4.4&color=ff6600&labelColor=555&style=for-the-badge)](https://www.rabbitmq.com/)
 
 ---
 [![Tests](https://img.shields.io/github/actions/workflow/status/RDDLab/Django-RMQ/testing.yml?branch=main&label=Tests)](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml)
@@ -31,7 +31,7 @@
 
 # Django-RMQ
 
-Django-RMQ provides RabbitMQ wrappers and tools for Django projects, built on top of [Pika](https://pika.readthedocs.io/). It is a lightweight integration layer — not a task queue or a Celery replacement — for projects that need to publish and consume messages while keeping broker infrastructure code predictable and close to the Django configuration. Supports RabbitMQ 3.13–4.3.
+Django-RMQ provides RabbitMQ wrappers and tools for Django projects, built on top of [Pika](https://pika.readthedocs.io/). It is a lightweight integration layer — not a task queue or a Celery replacement — for projects that need to publish and consume messages while keeping broker infrastructure code predictable and close to the Django configuration. Supports RabbitMQ 3.13–4.4.
 
 ## Features
 

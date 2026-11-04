@@ -15,6 +15,7 @@ All notable changes to **Django-RMQ** are documented in this file.
 - **`check_rabbitmq_connections --timeout`** — overrides `DEADLINE` for a single run.
 - **`check_rabbitmq_connections --format {text,json}`** — output format, `text` by default.
 - `HealthcheckConfig` and `RabbitMQConnectionManager.build_probe_parameters()`.
+- **RabbitMQ 4.4 support** — supported range is now 3.13–4.4.
 
 ### Changed
 
@@ -36,6 +37,9 @@ All notable changes to **Django-RMQ** are documented in this file.
 
 - Unit tests for the new healthcheck output, parallel probing, deadline and timeout settings; an integration test for
   an unanswering first node.
+- RabbitMQ 4.4 added to the integration-test CI matrix; the cluster failover tests and the local
+  `.github/docker-compose.yml` / `.github/docker-compose.cluster.yml` now run on 4.4.
+- New integration test `test_passive_declare_with_write_only_permission` (`tests/integration/test_mandatory.py`).
 
 [1.1.0]: https://github.com/RDDLab/Django-RMQ/releases/tag/1.1.0
 

@@ -1,6 +1,6 @@
 services:
   rabbitmq:
-    image: rabbitmq:4.3.1-management-alpine
+    image: rabbitmq:4.4.0-management-alpine
     container_name: django-rmq-test
     ports:
       - "5672:5672"    # AMQP — RMQ_PORT

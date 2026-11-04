@@ -1,5 +1,5 @@
 x-rabbit-common: &rabbit-common
-  image: ${RABBITMQ_IMAGE:-rabbitmq:4.3.1-management-alpine}
+  image: ${RABBITMQ_IMAGE:-rabbitmq:4.4.0-management-alpine}
   environment: &rabbit-env
     RABBITMQ_DEFAULT_USER: guest
     RABBITMQ_DEFAULT_PASS: guest
