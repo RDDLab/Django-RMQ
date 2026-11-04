@@ -4,9 +4,6 @@ ci:
   autoupdate_schedule: "quarterly"
   skip: [pyrefly]
 
-default_language_version:
-  python: python3.10
-
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
