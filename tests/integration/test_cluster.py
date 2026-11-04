@@ -1,7 +1,9 @@
+import json
 import threading
 from typing import Any
 
 import pytest
+from django.core.management import call_command
 from pika.adapters.blocking_connection import BlockingChannel
 
 from django_rmq.connections import RabbitMQConnectionManager
@@ -56,6 +58,34 @@ class TestClusterFailover:
 
         assert done.wait(timeout=10), 'roundtrip did not complete past the dead node'
         assert received == [b'past-dead-node']
+
+    @pytest.mark.integration
+    def test_healthcheck_is_not_delayed_by_unanswering_first_node(
+        self,
+        configure_real_rmq,
+        cluster_broker_params,
+        broker_params: dict[str, Any],
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """
+        The healthcheck probes nodes in parallel: a first node that never answers
+        (a non-routable address, so the TCP connect hangs instead of being refused)
+        must not delay the verdict. A sequential pika walk would wait out the
+        node's socket timeout first. Needs only one broker.
+        """
+        params: dict[str, Any] = cluster_broker_params(
+            shuffle=False,
+            endpoints=[('10.255.255.1', 5672), (broker_params['HOST'], broker_params['PORT'])],
+        )
+        configure_real_rmq(connections={'default': params})
+
+        call_command('check_rabbitmq_connections', output_format='json')
+
+        check: dict[str, Any] = json.loads(capsys.readouterr().out.splitlines()[1])
+        assert check['status'] == 'ok'
+        assert check['node'] == f'{broker_params["HOST"]}:{broker_params["PORT"]}'
+        # Well below the probe's default per-node SOCKET_TIMEOUT (5 s).
+        assert check['seconds'] < 3
 
     @pytest.mark.integration
     @pytest.mark.cluster

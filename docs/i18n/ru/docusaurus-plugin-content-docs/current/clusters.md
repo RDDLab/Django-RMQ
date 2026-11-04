@@ -46,12 +46,12 @@ RABBITMQ_CONNECTIONS: dict = {
 * `_resolve_nodes` в `django_rmq/apps.py` превращает каждую запись `{'HOST': ..., 'PORT': ...}`
   в `NodeConfig`;
 * Остальные ключи (`VIRTUAL_HOST`, `USER`, `PASSWORD`, `HEARTBEAT`,
-  `BLOCKED_CONNECTION_TIMEOUT`) применяются ко всем узлам списка.
+  `BLOCKED_CONNECTION_TIMEOUT`, `SOCKET_TIMEOUT`, `STACK_TIMEOUT`) применяются ко всем узлам списка.
 
 Далее `RabbitMQConnectionManager.__init__` в `django_rmq/connections.py` строит по одному
-`pika.ConnectionParameters` на каждый узел (`_node_parameters`), все они разделяют одни и те
-же `PlainCredentials`, `virtual_host`, `heartbeat` и `blocked_connection_timeout`, и передаёт
-весь список в `BlockingConnection`:
+`pika.ConnectionParameters` на каждый узел (`_make_node_parameters`), все они разделяют одни и те
+же `PlainCredentials`, `virtual_host`, `heartbeat`, `blocked_connection_timeout`,
+`socket_timeout` и `stack_timeout`, и передаёт весь список в `BlockingConnection`:
 
 ```python
 # django_rmq/connections.py
@@ -90,6 +90,11 @@ failover по кластеру.
   соединение.
 - `pika` снова перебирает `[A, B, C]`: `A` отказывает в соединении, `B` же принимает его.
 - Публикация/потребление возобновляются на ноде `B`.
+
+Если `A` не отказывает в соединении, а молча отбрасывает пакеты (хост недоступен, разрыв
+сети) или принимает TCP-соединение, но так и не завершает AMQP-handshake, `pika` потратит
+на `A` до `SOCKET_TIMEOUT` / `STACK_TIMEOUT`, прежде чем перейти к `B`. См.
+Таймауты узлов и время failover.
 
 `get_producer_connection` и `get_consumer_connection` логируют debug-запись при каждом
 открытии нового соединения, включая список узлов и флаг `shuffle`:
@@ -136,6 +141,68 @@ return sequence
 
 ---
 
+## Таймауты узлов и время failover
+
+`pika` проходит последовательность нод **строго по очереди**: к следующей ноде она не
+переходит, пока не зафейлилась попытка к текущей ноде.
+
+| Что именно происходит с нодой                                             | Стоимость одной попытки                     |
+|---------------------------------------------------------------------------|---------------------------------------------|
+| Отклоняет соединение (порт закрыт, процесс остановлен, хост доступен)     | Быстро: ошибка сразу                        |
+| Молча отбрасывает пакеты (хост выключен, `DROP` на файрволе, разрыв сети) | До `SOCKET_TIMEOUT` (по умолчанию `10.0` с) |
+| Принимает TCP, но AMQP-handshake зависает                                 | До `STACK_TIMEOUT` (по умолчанию `15.0` с)  |
+
+Худшая задержка до того, как `pika` дойдёт до живого узла, — это **сумма** по всем плохим
+узлам, которые пробуются раньше. Для трёх узлов и значений по умолчанию (значения для
+иллюстрации):
+
+- первые два узла отбрасывают пакеты — около 20 с (2 × 10 с) до попытки к третьему;
+- первые два узла зависают на handshake — около 30 с (2 × 15 с).
+
+Эту цену приходится платить при каждом подключении и переподключении:
+
+- первое соединение продюсера в потоке;
+- переподключение после `reset_producer_channel()` — вызов `publish` блокируется на это время;
+- каждое переподключение потребителя (поверх задержки backoff).
+
+Логику переподключения см. в разделе [Надёжность](./reliability.md).
+
+### Рекомендация
+
+Уменьшите `SOCKET_TIMEOUT` и `STACK_TIMEOUT` у кластерного алиаса и сохраняйте
+`STACK_TIMEOUT >= SOCKET_TIMEOUT`:
+
+```python
+# settings.py
+RABBITMQ_CONNECTIONS: dict = {
+    'default': {
+        'NODES': [
+            {'HOST': 'rmq-1.internal', 'PORT': 5672},
+            {'HOST': 'rmq-2.internal', 'PORT': 5672},
+            {'HOST': 'rmq-3.internal', 'PORT': 5672},
+        ],
+        # ... the remaining keys as above ...
+        'SOCKET_TIMEOUT': 3.0,  # example values — tune for your network/TLS
+        'STACK_TIMEOUT': 6.0,
+    },
+}
+```
+
+Не занижайте их слишком сильно: в медленной сети или при TLS здоровый узел может не
+успеть ответить, и клиент его пропустит. Подробнее — в разделе
+Таймауты подключения.
+
+### Хелсчек
+
+Команда `check_rabbitmq_connections` **не** обходит узлы по очереди. Она проверяет все
+узлы параллельно со своими таймаутами из `RABBITMQ_HEALTHCHECK` и игнорирует `SOCKET_TIMEOUT` /
+`STACK_TIMEOUT` алиаса и `SHUFFLE_NODES`. Алиас считается рабочим, как только отвечает
+первый узел, поэтому мёртвый узел не задерживает вердикт. См.
+[`check_rabbitmq_connections`](./management-commands.md#check_rabbitmq_connections) и
+`RABBITMQ_HEALTHCHECK`.
+
+---
+
 ## Альтернатива: балансировщик или DNS
 
 Вместо перечисления всех узлов через `NODES` можно поставить перед кластером единый
@@ -164,7 +231,9 @@ Trade-offs:
 (см. [`QueueType`](./api-reference.md#queuetype) в справочнике API):
 
 ```python
-from django_rmq.queues.queue_config import QueueConfig, QueueType
+from django_rmq.queues.queue_config import QueueConfig,
+
+QueueType
 
 orders_queue: QueueConfig = QueueConfig(name='orders', queue_type=QueueType.QUORUM)
 ```
@@ -206,8 +275,10 @@ Publisher confirms уже включены на каждом канале про
 
 ## См. также
 
-- [Конфигурация](./configuration.md) — полный справочник параметров `NODES`/`SHUFFLE_NODES`
-  и случаи ошибок валидации.
+- [Конфигурация](./configuration.md) — полный справочник параметров
+  `NODES`/`SHUFFLE_NODES`/`SOCKET_TIMEOUT`/`STACK_TIMEOUT` и случаи ошибок валидации.
+- [Management-команды](./management-commands.md) — `check_rabbitmq_connections` проверяет
+  каждую ноду параллельно.
 - [Надёжность](./reliability.md) — единичный повтор продюсера и переподключение
   потребителя с backoff.
 - [Несколько подключений](./multiple-connections.md) — работа с несколькими алиасами.

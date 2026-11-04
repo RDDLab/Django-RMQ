@@ -1,3 +1,4 @@
+import json
 import os
 import signal
 import subprocess
@@ -99,9 +100,11 @@ class TestCommands:
     ):
         configure_real_rmq()
 
-        call_command('check_rabbitmq_connections')
+        call_command('check_rabbitmq_connections', output_format='json')
 
-        assert 'ok: default' in capsys.readouterr().out
+        summary: dict[str, Any] = json.loads(capsys.readouterr().out.splitlines()[-1])
+        assert summary['status'] == 'healthy'
+        assert summary['failed'] == []
 
     def test_check_connections_unreachable_raises(
         self,

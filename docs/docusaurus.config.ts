@@ -115,8 +115,12 @@ const config: Config = {
           lastVersion: 'current',
           versions: {
             current: {
-              label: '1.0.5',
+              label: '1.1.0',
               path: '',
+            },
+            '1.0.5': {
+              label: '1.0.5',
+              banner: 'none',
             },
             '1.0.4': {
               label: '1.0.4',

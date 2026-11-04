@@ -4,12 +4,42 @@ All notable changes to **Django-RMQ** are documented in this file.
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-11-04
+
+### Added
+
+- **Connection timeouts** — optional `SOCKET_TIMEOUT` and `STACK_TIMEOUT` keys in `RABBITMQ_CONNECTIONS` (defaults
+  match pika: `10` / `15` seconds).
+- **`RABBITMQ_HEALTHCHECK` setting** — optional `DEADLINE`, `SOCKET_TIMEOUT` and `STACK_TIMEOUT` for
+  `check_rabbitmq_connections` (defaults `15` / `5` / `10` seconds).
+- **`check_rabbitmq_connections --timeout`** — overrides `DEADLINE` for a single run.
+- **`check_rabbitmq_connections --format {text,json}`** — output format, `text` by default.
+- `HealthcheckConfig` and `RabbitMQConnectionManager.build_probe_parameters()`.
+
 ### Changed
 
-- Documentation site migrated from VuePress 2 (`vuepress-theme-hope`) to Docusaurus 3 and lives entirely under `docs/`.
-  Content, English/Russian locales, and versions 1.0.5 / 1.0.4 stay in place.
+- **`check_rabbitmq_connections`** checks all nodes and aliases in parallel; an alias is healthy as soon as any of its
+  nodes answers. An unresponsive node no longer causes intermittent probe timeouts on a healthy cluster.
+- **Breaking (output only):** `check_rabbitmq_connections` output reworked — `startup`, per-alias `check` and
+  `summary` lines, no color. The old `OK: <alias>` lines are gone. Exit codes are unchanged.
+- `check_rabbitmq_connections` no longer runs Django system checks; `--skip-checks` is still accepted.
+- New timeout settings are validated at startup and raise `ImproperlyConfigured` on invalid values.
 
-## [1.0.5] — 27.07.2026
+### Documentation
+
+- Documentation site migrated from VuePress 2 to Docusaurus 3 (`docs/`).
+- Management commands, Configuration, Clusters guides and API reference (EN/RU) updated for the healthcheck and the
+  new timeout settings.
+- Current docs are labeled 1.1.0; a 1.0.5 snapshot (EN/RU) was added.
+
+### Tests
+
+- Unit tests for the new healthcheck output, parallel probing, deadline and timeout settings; an integration test for
+  an unanswering first node.
+
+[1.1.0]: https://github.com/RDDLab/Django-RMQ/releases/tag/1.1.0
+
+## [1.0.5] — 2026-07-27
 
 ### Added
 
@@ -53,6 +83,8 @@ All notable changes to **Django-RMQ** are documented in this file.
   `/{en,ru}/1.0.4/` (frozen snapshot from the `1.0.4` tag). `/en/` and `/ru/` redirect to the latest version, and a
   "Version" dropdown in the navbar switches between them. The 1.0.4 sidebar omits the Clusters guide, which did not
   exist in that release.
+
+[1.0.5]: https://github.com/RDDLab/Django-RMQ/releases/tag/1.0.5
 
 ## [1.0.4] — 2026-07-11
 

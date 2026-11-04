@@ -41,9 +41,9 @@ Django-RMQ provides RabbitMQ wrappers and tools for Django projects, built on to
 - **Reliable delivery** — publisher confirms, `mandatory=True`, and `delivery_mode=2` (persistent) are enforced on every message.
 - **Auto-reconnect with backoff** — producers retry once on transient channel errors; consumers reconnect with exponential backoff capped at a configurable maximum.
 - **Dead-letter routing** — declare queues with `QueueConfig(dead_letter_exchange=...)` so unhandled messages are nacked without requeue and routed to a DLX.
-- **Management commands** — `setup_rabbitmq_topology` (idempotent exchange/queue/binding setup) and `start_consumers` (threaded runner with graceful SIGTERM/SIGINT shutdown).
+- **Management commands** — `setup_rabbitmq_topology` (idempotent exchange/queue/binding setup), `start_consumers` (threaded runner with graceful SIGTERM/SIGINT shutdown), and `check_rabbitmq_connections` (healthcheck for container probes).
 - **Multiple connections** — configure several broker aliases and select per producer/consumer via `using=`.
-- **RabbitMQ clusters** — point one alias at several nodes via NODES for client-side failover; pika tries each node until one connects. Optional SHUFFLE_NODES spreads clients across the cluster.
+- **RabbitMQ clusters** — point one alias at several nodes via NODES for client-side failover; pika tries each node until one connects. Optional SHUFFLE_NODES spreads clients across the cluster; per-alias `SOCKET_TIMEOUT`/`STACK_TIMEOUT` give faster failover.
 - **Fully typed** — ships `py.typed`; compatible with pyrefly and standard type checkers.
 
 ## Installation

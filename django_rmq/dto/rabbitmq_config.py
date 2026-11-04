@@ -41,6 +41,12 @@ class RabbitMQConfig:
     :param shuffle_nodes: When True, the node order is reshuffled on every
                           connection attempt so clients spread themselves across
                           the cluster instead of all preferring the first node.
+    :param socket_timeout: Seconds to wait for the TCP connection to a single node
+                           (pika `socket_timeout`). Nodes are tried one after
+                           another, so each unreachable node before a live one
+                           adds up to this much to a connection attempt.
+    :param stack_timeout: Seconds to wait for the full TCP + AMQP bring-up of a
+                          single node (pika `stack_timeout`).
     """
 
     nodes: tuple[NodeConfig, ...]
@@ -52,3 +58,5 @@ class RabbitMQConfig:
     reconnect_initial_backoff: float
     reconnect_max_backoff: float
     shuffle_nodes: bool = False
+    socket_timeout: float = 10.0
+    stack_timeout: float = 15.0

@@ -186,7 +186,9 @@ MessageCallback = Callable[
 ## QueueConfig
 
 ```python
-from django_rmq.queues.queue_config import QueueConfig, QueueType
+from django_rmq.queues.queue_config import QueueConfig,
+
+QueueType
 ```
 
 `frozen dataclass` для декларативной конфигурации очереди.
@@ -201,13 +203,13 @@ class QueueConfig:
     dead_letter_routing_key: str | None = None
 ```
 
-| Поле                      | Тип                 | По умолчанию | Описание                                                                          |
-|---------------------------|---------------------|--------------|-------------------------------------------------------------------------------------|
-| `name`                    | `str`               | обязательное | Имя очереди. Также используется как `str(queue_config)`.                          |
-| `durable`                 | `bool`              | `True`       | Очередь переживает перезапуск брокера.                                            |
+| Поле                      | Тип                 | По умолчанию | Описание                                                                                           |
+|---------------------------|---------------------|--------------|----------------------------------------------------------------------------------------------------|
+| `name`                    | `str`               | обязательное | Имя очереди. Также используется как `str(queue_config)`.                                           |
+| `durable`                 | `bool`              | `True`       | Очередь переживает перезапуск брокера.                                                             |
 | `queue_type`              | `QueueType \| None` | `None`       | Устанавливает `x-queue-type` при объявлении; при `None` используется `default_queue_type` брокера. |
-| `dead_letter_exchange`    | `str \| None`       | `None`       | Обменник, куда маршрутизируются dead-letter сообщения (`x-dead-letter-exchange`). |
-| `dead_letter_routing_key` | `str \| None`       | `None`       | Ключ маршрутизации для dead-letter сообщений (`x-dead-letter-routing-key`).       |
+| `dead_letter_exchange`    | `str \| None`       | `None`       | Обменник, куда маршрутизируются dead-letter сообщения (`x-dead-letter-exchange`).                  |
+| `dead_letter_routing_key` | `str \| None`       | `None`       | Ключ маршрутизации для dead-letter сообщений (`x-dead-letter-routing-key`).                        |
 
 ### `QueueType`
 
@@ -219,7 +221,9 @@ Enum поддерживаемых типов очередей RabbitMQ; знач
 | `QUORUM`  | `'quorum'`  |
 | `STREAM`  | `'stream'`  |
 
-`QueueType` наследуется от `str` (а не от `StrEnum`, доступного только в 3.11+, чтобы сохранить совместимость с Python 3.10), поэтому каждый член — обычная строка и сериализуется брокеру как есть. Если `queue_type` не задан на `QueueConfig`, брокер применяет свой `default_queue_type`.
+`QueueType` наследуется от `str` (а не от `StrEnum`, доступного только в 3.11+, чтобы сохранить совместимость с Python
+3.10), поэтому каждый член — обычная строка и сериализуется брокеру как есть. Если `queue_type` не задан на
+`QueueConfig`, брокер применяет свой `default_queue_type`.
 
 ### Свойство `QueueConfig.arguments`
 
@@ -245,8 +249,7 @@ from django_rmq.dto.rabbitmq_config import RabbitMQConfig
 ```python
 @dataclass(frozen=True)
 class RabbitMQConfig:
-    host: str
-    port: int
+    nodes: tuple[NodeConfig, ...]
     virtual_host: str
     user: str
     password: str
@@ -254,19 +257,69 @@ class RabbitMQConfig:
     blocked_connection_timeout: int
     reconnect_initial_backoff: float
     reconnect_max_backoff: float
+    shuffle_nodes: bool = False
+    socket_timeout: float = 10.0
+    stack_timeout: float = 15.0
 ```
 
-| Поле                         | Тип     | Описание                                                                                  |
-|------------------------------|---------|-------------------------------------------------------------------------------------------|
-| `host`                       | `str`   | Хостнейм или IP брокера.                                                                  |
-| `port`                       | `int`   | AMQP-порт.                                                                                |
-| `virtual_host`               | `str`   | Виртуальный хост для подключения.                                                         |
-| `user`                       | `str`   | Имя пользователя для `PlainCredentials`.                                                  |
-| `password`                   | `str`   | Пароль для `PlainCredentials`.                                                            |
-| `heartbeat`                  | `int`   | Интервал heartbeat в секундах.                                                            |
-| `blocked_connection_timeout` | `int`   | Секунды ожидания, пока соединение заблокировано брокером.                                 |
-| `reconnect_initial_backoff`  | `float` | Начальная задержка переподключения консьюмера в секундах.                                 |
-| `reconnect_max_backoff`      | `float` | Максимальная задержка переподключения консьюмера (ограничение экспоненциальной задержки). |
+Псевдоним может указывать на одну ноду или на несколько (кластер). Все ноды используют один и тот же
+виртуальный хост и учётные данные; различаются только хост и порт.
+
+| Поле                         | Тип                      | По умолчанию | Описание                                                                                                                                                       |
+|------------------------------|--------------------------|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `nodes`                      | `tuple[NodeConfig, ...]` | обязательное | Один или несколько адресов узлов. pika пробует их по порядку, пока один из них не примет соединение.                                                           |
+| `virtual_host`               | `str`                    | обязательное | AMQP-виртуальный хост для подключения.                                                                                                                         |
+| `user`                       | `str`                    | обязательное | Имя пользователя для `PlainCredentials`.                                                                                                                       |
+| `password`                   | `str`                    | обязательное | Пароль для `PlainCredentials`.                                                                                                                                 |
+| `heartbeat`                  | `int`                    | обязательное | Интервал heartbeat в секундах.                                                                                                                                 |
+| `blocked_connection_timeout` | `int`                    | обязательное | Секунды ожидания, пока брокер блокирует соединение, прежде чем оно завершится ошибкой.                                                                         |
+| `reconnect_initial_backoff`  | `float`                  | обязательное | Начальная задержка переподключения консьюмера в секундах.                                                                                                      |
+| `reconnect_max_backoff`      | `float`                  | обязательное | Максимальная задержка переподключения консьюмера в секундах (ограничение экспоненциальной задержки).                                                           |
+| `shuffle_nodes`              | `bool`                   | `False`      | Перемешивать порядок нод при каждой попытке подключения.                                                                                                       |
+| `socket_timeout`             | `float`                  | `10.0`       | Секунды ожидания TCP-соединения с одним узлом (`socket_timeout` в pika). Каждый недоступный узел, опрошенный до живого, добавляет к попытке до этого значения. |
+| `stack_timeout`              | `float`                  | `15.0`       | Секунды ожидания полного цикла TCP + AMQP одного узла (`stack_timeout` в pika).                                                                                |
+
+### `NodeConfig`
+
+```python
+from django_rmq.dto.rabbitmq_config import NodeConfig
+```
+
+```python
+@dataclass(frozen=True)
+class NodeConfig:
+    host: str
+    port: int
+```
+
+Неизменяемый адрес одного узла RabbitMQ в рамках псевдонима соединения.
+
+| Поле   | Тип   | Описание              |
+|--------|-------|-----------------------|
+| `host` | `str` | Хостнейм или IP узла. |
+| `port` | `int` | AMQP-порт узла.       |
+
+---
+
+## HealthcheckConfig
+
+```python
+from django_rmq.dto.healthcheck_config import HealthcheckConfig
+```
+
+```python
+@dataclass(frozen=True)
+class HealthcheckConfig:
+    deadline: float = 15.0
+    socket_timeout: float = 5.0
+    stack_timeout: float = 10.0
+```
+
+| Поле             | Тип     | По умолчанию | Ключ настройки   | Описание                                                                                                              |
+|------------------|---------|--------------|------------------|-----------------------------------------------------------------------------------------------------------------------|
+| `deadline`       | `float` | `15.0`       | `DEADLINE`       | Общий дедлайн в секундах на проверку всех псевдонимов. По истечении псевдонимы без живого узла считаются неуспешными. |
+| `socket_timeout` | `float` | `5.0`        | `SOCKET_TIMEOUT` | Секунды ожидания TCP-соединения с одним узлом.                                                                        |
+| `stack_timeout`  | `float` | `10.0`       | `STACK_TIMEOUT`  | Секунды ожидания полного подъёма TCP + AMQP одного узла.                                                              |
 
 ---
 
@@ -284,6 +337,8 @@ from django_rmq.connections import RabbitMQConnectionManager
 ```python
 def __init__(self, config: RabbitMQConfig) -> None
 ```
+
+Строит по одному `ConnectionParameters` на узел, каждый с `socket_timeout` и `stack_timeout` псевдонима.
 
 ### `RabbitMQConnectionManager.get_producer_connection`
 
@@ -321,6 +376,29 @@ def reset_producer_channel(self) -> None
 Закрывает и удаляет кешированный канал продюсера и соединение. Вызывается автоматически `Producer.publish` после
 восстанавливаемой ошибки, чтобы следующая публикация открыла новый канал. Безопасен к вызову даже при отсутствии
 кешированного канала.
+
+### `RabbitMQConnectionManager.build_probe_parameters`
+
+```python
+def build_probe_parameters(
+    self,
+    socket_timeout: float,
+    stack_timeout: float,
+) -> list[ConnectionParameters]
+```
+
+| Параметр         | Тип     | По умолчанию | Описание                                        |
+|------------------|---------|--------------|-------------------------------------------------|
+| `socket_timeout` | `float` | обязательный | Секунды ожидания TCP-соединения с узлом.        |
+| `stack_timeout`  | `float` | обязательный | Секунды ожидания полного цикла TCP + AMQP узла. |
+
+**Returns:** `list[ConnectionParameters]` — по одному элементу на узел, в порядке `NODES`.
+
+Строит независимые параметры коннекшена для каждого узла, чтобы проверять узлы по отдельности. Порядок соответствует
+`NODES` и никогда не перемешивается; при каждом вызове строится новый список, ничего не кешируется. Соединения не
+открываются. Учётные данные, виртуальный хост, heartbeat и таймаут блокировки соединения те же, что у псевдонима;
+`socket_timeout` / `stack_timeout` и `shuffle_nodes` псевдонима игнорируются. Используется командой
+`check_rabbitmq_connections`.
 
 ---
 
@@ -462,9 +540,12 @@ def ready(self) -> None
 
 Читает `RABBITMQ_CONNECTIONS` из настроек Django и создаёт для каждого псевдонима один `RabbitMQConnectionManager`, один
 `SetupRegistry` и один `ConsumersRegistry`. Сохраняет их в модуле `django_rmq` под именами `connection_managers`,
-`setup_registries` и `consumers_registries`.
+`setup_registries` и `consumers_registries`. Также разбирает необязательную настройку `RABBITMQ_HEALTHCHECK` в
+`django_rmq.healthcheck_config`, поэтому её ошибки проявляются при старте воркера, а не в хелсчек-пробе.
 
-**Raises:** `ImproperlyConfigured` — `RABBITMQ_CONNECTIONS` отсутствует или пуст.
+**Raises:** `ImproperlyConfigured` — `RABBITMQ_CONNECTIONS` отсутствует или пуст, адресация узлов отсутствует или
+некорректна, `SOCKET_TIMEOUT` / `STACK_TIMEOUT` не является положительным числом либо `RABBITMQ_HEALTHCHECK`
+некорректна. См. [Error cases](./configuration.md) в руководстве по конфигурации.
 
 ---
 
@@ -476,10 +557,12 @@ import django_rmq
 django_rmq.connection_managers  # dict[str, RabbitMQConnectionManager] | None
 django_rmq.setup_registries  # dict[str, SetupRegistry] | None
 django_rmq.consumers_registries  # dict[str, ConsumersRegistry] | None
+django_rmq.healthcheck_config  # HealthcheckConfig | None
 ```
 
-Все три имеют значение `None` до выполнения `RabbitMQAppConfig.ready()`. Используйте функции-аксессоры (
-`get_connection_manager`, `get_consumers_registry`, `get_setup_registry`) вместо прямого обращения к этим словарям.
+Все четыре имеют значение `None` до выполнения `RabbitMQAppConfig.ready()`. Используйте функции-аксессоры (
+`get_connection_manager`, `get_consumers_registry`, `get_setup_registry`) вместо прямого обращения к первым трём
+словарям.
 
 ---
 
@@ -500,6 +583,26 @@ uv run python manage.py setup_rabbitmq_topology [--using ALIAS]
 
 После настройки выводит отчёт об объявленных обменниках, очередях и привязках, дедуплицированных по имени.
 
+### `check_rabbitmq_connections`
+
+```bash
+uv run python manage.py check_rabbitmq_connections [--using ALIAS] [--format {json,text}] [--timeout SECONDS] [--skip-checks]
+```
+
+Хелсчек для контейнеров. Параллельно проверяет каждый узел одного или всех alias'ов (открывает соединение и
+сразу закрывает его) с таймаутами из `RABBITMQ_HEALTHCHECK`. Алиас считается здоровым, как только отвечает один из
+его узлов; псевдонимы без живого узла получают FAIL, когда отказали все узлы или истёк дедлайн. Завершается с кодом `0`,
+если все псевдонимы здоровы, и `1` в противном случае.
+
+| Опция                  | Описание                                                                                                    |
+|------------------------|-------------------------------------------------------------------------------------------------------------|
+| `--using ALIAS`        | Проверить только указанный алиас. Без этой опции проверяются все.                                           |
+| `--format {json,text}` | Формат вывода: `text` (по умолчанию, `key=value`) или `json` (один объект на строку).                       |
+| `--timeout SECONDS`    | Общий дедлайн в секундах. Должен быть больше `0`. По умолчанию `RABBITMQ_HEALTHCHECK['DEADLINE']` (`15.0`). |
+| `--skip-checks`        | Ничего не делает, оставлена для обратной совместимости: команда никогда не запускает системные проверки.    |
+
+Выходные события, коды возврата и примеры см. в разделе [Команды управления](./management-commands.md).
+
 ### `start_consumers`
 
 ```bash
@@ -518,17 +621,36 @@ uv run python manage.py start_consumers [--using ALIAS]
 
 ## Справочник настроек
 
-| Ключ                         | Тип     | Описание                                                                 |
-|------------------------------|---------|--------------------------------------------------------------------------|
-| `HOST`                       | `str`   | Хостнейм или IP брокера.                                                 |
-| `PORT`                       | `int`   | AMQP-порт (обычно `5672`).                                               |
-| `VIRTUAL_HOST`               | `str`   | Виртуальный хост (например, `'/'`).                                      |
-| `USER`                       | `str`   | Имя пользователя для аутентификации.                                     |
-| `PASSWORD`                   | `str`   | Пароль для аутентификации.                                               |
-| `HEARTBEAT`                  | `int`   | Интервал heartbeat в секундах.                                           |
-| `BLOCKED_CONNECTION_TIMEOUT` | `int`   | Секунды до таймаута заблокированного соединения.                         |
-| `RECONNECT_INITIAL_BACKOFF`  | `float` | Начальная задержка переподключения консьюмера в секундах.                |
-| `RECONNECT_MAX_BACKOFF`      | `float` | Максимальная задержка переподключения консьюмера (ограничение задержки). |
+Ключи каждого псевдонима в `RABBITMQ_CONNECTIONS`:
 
-Все девять ключей обязательны для каждого псевдонима. Отсутствующие ключи вызывают `KeyError` в процессе
-`AppConfig.ready()`. Полный пример настроек см. в разделе [Конфигурация](./configuration.md).
+| Ключ                         | Тип                    | Обязательный                  | Описание                                                                                                   |
+|------------------------------|------------------------|-------------------------------|------------------------------------------------------------------------------------------------------------|
+| `HOST`                       | `str`                  | вместе с `PORT`, либо `NODES` | Хостнейм или IP брокера. Взаимоисключающий с `NODES`.                                                      |
+| `PORT`                       | `int`                  | вместе с `HOST`, либо `NODES` | AMQP-порт (обычно `5672`). Взаимоисключающий с `NODES`.                                                    |
+| `NODES`                      | `list[dict[str, Any]]` | либо `HOST` / `PORT`          | Непустой список узлов, у каждого есть `HOST` и `PORT`. Взаимоисключающий с `HOST` / `PORT`.                |
+| `VIRTUAL_HOST`               | `str`                  | да                            | Виртуальный хост (например, `'/'`).                                                                        |
+| `USER`                       | `str`                  | да                            | Имя пользователя для аутентификации.                                                                       |
+| `PASSWORD`                   | `str`                  | да                            | Пароль для аутентификации.                                                                                 |
+| `HEARTBEAT`                  | `int`                  | да                            | Интервал heartbeat в секундах.                                                                             |
+| `BLOCKED_CONNECTION_TIMEOUT` | `int`                  | да                            | Секунды до таймаута заблокированного соединения.                                                           |
+| `RECONNECT_INITIAL_BACKOFF`  | `float`                | да                            | Начальная задержка переподключения консьюмера в секундах.                                                  |
+| `RECONNECT_MAX_BACKOFF`      | `float`                | да                            | Максимальная задержка переподключения консьюмера (ограничение задержки).                                   |
+| `SHUFFLE_NODES`              | `bool`                 | нет (по умолчанию `False`)    | Перемешивать порядок узлов при каждой попытке подключения.                                                 |
+| `SOCKET_TIMEOUT`             | `float`                | нет (по умолчанию `10.0`)     | Секунды ожидания TCP-соединения с одним узлом. Положительное число; `bool` и строки отклоняются.           |
+| `STACK_TIMEOUT`              | `float`                | нет (по умолчанию `15.0`)     | Секунды ожидания полного подъёма TCP + AMQP одного узла. Положительное число; `bool` и строки отклоняются. |
+
+Обязательные ключи: `VIRTUAL_HOST`, `USER`, `PASSWORD`, `HEARTBEAT`, `BLOCKED_CONNECTION_TIMEOUT`,
+`RECONNECT_INITIAL_BACKOFF`, `RECONNECT_MAX_BACKOFF`. Отсутствующий ключ вызывает `KeyError` в процессе
+`AppConfig.ready()`. Адресация узлов тоже обязательна: либо `HOST` и `PORT`, либо `NODES` (но не оба сразу); иначе
+выбрасывается `ImproperlyConfigured`. `SHUFFLE_NODES`, `SOCKET_TIMEOUT` и `STACK_TIMEOUT` необязательны.
+
+Необязательная глобальная настройка `RABBITMQ_HEALTHCHECK` — словарь; каждый ключ необязателен, `{}` оставляет все
+значения по умолчанию:
+
+| Ключ             | Тип     | По умолчанию | Описание                                                         |
+|------------------|---------|--------------|------------------------------------------------------------------|
+| `DEADLINE`       | `float` | `15.0`       | Общий дедлайн в секундах на проверку всех псевдонимов.           |
+| `SOCKET_TIMEOUT` | `float` | `5.0`        | Секунды ожидания TCP-соединения с одним узлом во время проверки. |
+| `STACK_TIMEOUT`  | `float` | `10.0`       | Секунды ожидания полного цикла TCP + AMQP одного узла.           |
+
+Полный пример настроек см. в разделе [Конфигурация](./configuration.md).
