@@ -4,7 +4,7 @@ All notable changes to **Django-RMQ** are documented in this file.
 
 ## [Unreleased]
 
-## [1.1.0] — 2026-11-04
+## [1.1.6] — 2026-11-04
 
 ### Added
 
@@ -31,7 +31,7 @@ All notable changes to **Django-RMQ** are documented in this file.
 - Documentation site migrated from VuePress 2 to Docusaurus 3 (`docs/`).
 - Management commands, Configuration, Clusters guides and API reference (EN/RU) updated for the healthcheck and the
   new timeout settings.
-- Current docs are labeled 1.1.0; a 1.0.5 snapshot (EN/RU) was added.
+- Current docs are labeled 1.1.6; a 1.0.5 snapshot (EN/RU) was added.
 
 ### Tests
 
@@ -41,7 +41,7 @@ All notable changes to **Django-RMQ** are documented in this file.
   `.github/docker-compose.yml` / `.github/docker-compose.cluster.yml` now run on 4.4.
 - New integration test `test_passive_declare_with_write_only_permission` (`tests/integration/test_mandatory.py`).
 
-[1.1.0]: https://github.com/RDDLab/Django-RMQ/releases/tag/1.1.0
+[1.1.6]: https://github.com/RDDLab/Django-RMQ/releases/tag/1.1.6
 
 ## [1.0.5] — 2026-07-27
 

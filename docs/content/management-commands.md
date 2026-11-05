@@ -359,7 +359,7 @@ Previously, a probe that exceeded its timeout left only a generic timeout messag
 the time went. Now every line is printed and flushed immediately, so the last visible line shows the phase the process
 was in.
 
-Since 1.1.0 the command also bounds the check phase by its own deadline: instead of being killed by the orchestrator, it
+Since 1.1.6 the command also bounds the check phase by its own deadline: instead of being killed by the orchestrator, it
 prints `UNHEALTHY` with a `TimeoutError` and exits. This works only if the probe timeout is not less than `startup` +
 `DEADLINE` (see Healthcheck timing budget).
 
