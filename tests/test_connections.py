@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import cast
 from unittest.mock import MagicMock
 
@@ -170,3 +171,47 @@ class TestClusterNodes:
             shuffled_list = call.args[0]
             assert shuffled_list is not manager._node_parameters
             assert shuffled_list is blocking_call.kwargs['parameters']
+
+
+class TestTimeouts:
+    def test_alias_timeouts_reach_connection_parameters(self, mocker: MockerFixture) -> None:
+        nodes = (NodeConfig(host='n1', port=5672), NodeConfig(host='n2', port=5673))
+        blocking = mocker.patch('django_rmq.connections.BlockingConnection')
+        config: RabbitMQConfig = replace(_make_config(nodes=nodes), socket_timeout=3.0, stack_timeout=7.0)
+
+        RabbitMQConnectionManager(config=config).get_producer_connection()
+
+        sequence = blocking.call_args.kwargs['parameters']
+        assert [(params.socket_timeout, params.stack_timeout) for params in sequence] == [(3.0, 7.0), (3.0, 7.0)]
+
+    def test_default_timeouts_match_pika(self) -> None:
+        manager = RabbitMQConnectionManager(config=_make_config())
+
+        params = manager._node_parameters[0]
+        assert (params.socket_timeout, params.stack_timeout) == (10.0, 15.0)
+
+
+class TestBuildProbeParameters:
+    def test_one_entry_per_node_in_order_with_given_timeouts(self) -> None:
+        nodes = (NodeConfig(host='n1', port=5672), NodeConfig(host='n2', port=5673))
+        manager = RabbitMQConnectionManager(config=_make_config(nodes=nodes))
+
+        probe = manager.build_probe_parameters(socket_timeout=1.5, stack_timeout=2.5)
+
+        assert [(p.host, p.port, p.socket_timeout, p.stack_timeout) for p in probe] == [
+            ('n1', 5672, 1.5, 2.5),
+            ('n2', 5673, 1.5, 2.5),
+        ]
+        assert probe[0].virtual_host == '/'
+        assert probe[0].credentials.username == 'guest'
+        # The alias's own parameters are left untouched.
+        assert manager._node_parameters[0].socket_timeout == 10.0
+
+    def test_never_shuffled(self, mocker: MockerFixture) -> None:
+        nodes = (NodeConfig(host='n1', port=5672), NodeConfig(host='n2', port=5673))
+        shuffle = mocker.patch('django_rmq.connections.random.shuffle')
+        manager = RabbitMQConnectionManager(config=_make_config(nodes=nodes, shuffle_nodes=True))
+
+        manager.build_probe_parameters(socket_timeout=1.0, stack_timeout=2.0)
+
+        shuffle.assert_not_called()

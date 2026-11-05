@@ -7,7 +7,7 @@ sidebar_position: 2
 
 - Python >= 3.10
 - Django >= 4.2
-- RabbitMQ 3.13–4.3
+- RabbitMQ 3.13–4.4
 - `pika==1.4.1` (installed automatically as a dependency)
 
 ## Installation

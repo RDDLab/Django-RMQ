@@ -3,7 +3,12 @@ from typing import Any
 from django.apps import AppConfig
 from django.core.exceptions import ImproperlyConfigured
 
+from django_rmq.dto.healthcheck_config import HealthcheckConfig
 from django_rmq.dto.rabbitmq_config import NodeConfig, RabbitMQConfig
+
+_DEFAULT_SOCKET_TIMEOUT: float = 10.0
+_DEFAULT_STACK_TIMEOUT: float = 15.0
+_HEALTHCHECK_KEYS: frozenset[str] = frozenset({'DEADLINE', 'SOCKET_TIMEOUT', 'STACK_TIMEOUT'})
 
 
 class RabbitMQAppConfig(AppConfig):
@@ -25,7 +30,8 @@ class RabbitMQAppConfig(AppConfig):
         per configured alias and stores them on the `django_rmq` module so the
         rest of the library can resolve them by alias.
 
-        :raises ImproperlyConfigured: If `RABBITMQ_CONNECTIONS` is missing or empty.
+        :raises ImproperlyConfigured: If `RABBITMQ_CONNECTIONS` is missing or empty,
+                                      or any setting value is invalid.
         """
         from django.conf import settings
 
@@ -55,6 +61,9 @@ class RabbitMQAppConfig(AppConfig):
         django_rmq.connection_managers = connection_managers
         django_rmq.setup_registries = setup_registries
         django_rmq.consumers_registries = consumers_registries
+        django_rmq.healthcheck_config = self._build_healthcheck_config(
+            params=getattr(settings, 'RABBITMQ_HEALTHCHECK', None),
+        )
 
     @classmethod
     def _build_config(cls, alias: str, params: dict[str, Any]) -> RabbitMQConfig:
@@ -82,7 +91,68 @@ class RabbitMQAppConfig(AppConfig):
             reconnect_initial_backoff=params['RECONNECT_INITIAL_BACKOFF'],
             reconnect_max_backoff=params['RECONNECT_MAX_BACKOFF'],
             shuffle_nodes=params.get('SHUFFLE_NODES', False),
+            socket_timeout=cls._resolve_timeout(
+                owner=f'RabbitMQ alias {alias!r}',
+                key='SOCKET_TIMEOUT',
+                value=params.get('SOCKET_TIMEOUT', _DEFAULT_SOCKET_TIMEOUT),
+            ),
+            stack_timeout=cls._resolve_timeout(
+                owner=f'RabbitMQ alias {alias!r}',
+                key='STACK_TIMEOUT',
+                value=params.get('STACK_TIMEOUT', _DEFAULT_STACK_TIMEOUT),
+            ),
         )
+
+    @classmethod
+    def _build_healthcheck_config(cls, params: Any) -> HealthcheckConfig:
+        """
+        Builds the healthcheck configuration from the `RABBITMQ_HEALTHCHECK` setting.
+
+        Every key is optional; missing keys keep the HealthcheckConfig defaults.
+
+        :param params: The `RABBITMQ_HEALTHCHECK` dict, or None when it is not set.
+        :return: The resolved, immutable HealthcheckConfig.
+        :raises ImproperlyConfigured: If the setting is not a dict, has unknown
+                                      keys, or holds a non-positive number.
+        """
+        if params is None:
+            return HealthcheckConfig()
+        if not isinstance(params, dict):
+            raise ImproperlyConfigured('`RABBITMQ_HEALTHCHECK` must be a dict.')
+
+        unknown: list[str] = sorted(set(params) - _HEALTHCHECK_KEYS)
+        if unknown:
+            raise ImproperlyConfigured(
+                f'`RABBITMQ_HEALTHCHECK`: unknown key(s) {", ".join(unknown)}; '
+                f'allowed: {", ".join(sorted(_HEALTHCHECK_KEYS))}.'
+            )
+
+        defaults: HealthcheckConfig = HealthcheckConfig()
+        owner: str = '`RABBITMQ_HEALTHCHECK`'
+        return HealthcheckConfig(
+            deadline=cls._resolve_timeout(owner=owner, key='DEADLINE', value=params.get('DEADLINE', defaults.deadline)),
+            socket_timeout=cls._resolve_timeout(
+                owner=owner, key='SOCKET_TIMEOUT', value=params.get('SOCKET_TIMEOUT', defaults.socket_timeout)
+            ),
+            stack_timeout=cls._resolve_timeout(
+                owner=owner, key='STACK_TIMEOUT', value=params.get('STACK_TIMEOUT', defaults.stack_timeout)
+            ),
+        )
+
+    @classmethod
+    def _resolve_timeout(cls, owner: str, key: str, value: Any) -> float:
+        """
+        Validates a timeout setting and converts it to float.
+
+        :param owner: Human-readable owner of the setting, used in the error message.
+        :param key: Setting key, used in the error message.
+        :param value: The raw setting value.
+        :return: The timeout in seconds.
+        :raises ImproperlyConfigured: If the value is not a positive int or float.
+        """
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+            raise ImproperlyConfigured(f"{owner}: '{key}' must be a positive number of seconds, got {value!r}.")
+        return float(value)
 
     @classmethod
     def _resolve_nodes(cls, alias: str, params: dict[str, Any]) -> tuple[NodeConfig, ...]:

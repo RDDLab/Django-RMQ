@@ -3,8 +3,8 @@ title: Clusters
 sidebar_position: 11
 ---
 
-A single connection alias can point at more than one broker node. Django-RMQ gives you
-**client-side failover**: pika tries each configured node in order until one accepts the
+A single connection alias can point at more than one broker node. Django-RMQ gives you **client-side failover**: pika
+tries each configured node in order until one accepts the
 connection. There is no proxying involved — on every connection attempt the library hands
 pika a sequence of node addresses, and pika walks that sequence itself.
 
@@ -43,14 +43,14 @@ RABBITMQ_CONNECTIONS: dict = {
 ```
 
 * `_resolve_nodes` in `django_rmq/apps.py` turns each `{'HOST': ..., 'PORT': ...}` entry into a
-`NodeConfig`;
+  `NodeConfig`;
 * The remaining keys (`VIRTUAL_HOST`, `USER`, `PASSWORD`, `HEARTBEAT`,
-`BLOCKED_CONNECTION_TIMEOUT`) apply to every node in the list.
+  `BLOCKED_CONNECTION_TIMEOUT`, `SOCKET_TIMEOUT`, `STACK_TIMEOUT`) apply to every node in the list.
 
 `RabbitMQConnectionManager.__init__` in `django_rmq/connections.py` then builds one
-`pika.ConnectionParameters` per node (`_node_parameters`), all sharing the same
-`PlainCredentials`, `virtual_host`, `heartbeat`, and `blocked_connection_timeout`, and hands
-the whole sequence to `BlockingConnection`:
+`pika.ConnectionParameters` per node (`_make_node_parameters`), all sharing the same
+`PlainCredentials`, `virtual_host`, `heartbeat`, `blocked_connection_timeout`,
+`socket_timeout`, and `stack_timeout`, and hands the whole sequence to `BlockingConnection`:
 
 ```python
 # django_rmq/connections.py
@@ -88,6 +88,11 @@ A typical failover, step by step:
 - The reconnect path (producer retry or consumer backoff loop) reopens the connection.
 - pika walks `[A, B, C]` again: A refuses the connection, B accepts.
 - Publishing/consuming resumes transparently on B.
+
+If A does not refuse the connection but silently drops packets (host down, network
+partition), or accepts the TCP connection and never completes the AMQP handshake, pika
+spends up to `SOCKET_TIMEOUT` / `STACK_TIMEOUT` on A before it moves on to B. See
+Node timeouts and failover time.
 
 `get_producer_connection` and `get_consumer_connection` log a debug entry every time a new
 connection is opened, including the node list and the `shuffle` flag:
@@ -135,6 +140,68 @@ across nodes instead of piling onto the first one.
 
 ---
 
+## Node timeouts and failover time
+
+pika walks the node sequence **sequentially**: it does not try the next node until the
+current one has failed. How long a bad node holds up the connection depends on how it
+fails:
+
+| What the node does                                                     | Cost per attempt                          |
+|------------------------------------------------------------------------|-------------------------------------------|
+| Refuses the connection (port closed, process down, host reachable)     | Fast: fails immediately                   |
+| Drops packets silently (host down, firewall `DROP`, network partition) | Up to `SOCKET_TIMEOUT` (default `10.0` s) |
+| Accepts TCP but the AMQP handshake hangs                               | Up to `STACK_TIMEOUT` (default `15.0` s)  |
+
+The worst-case delay before pika reaches a live node is the **sum** over all bad nodes
+tried before it. With three nodes and the defaults (values for illustration):
+
+- the first two nodes drop packets — about 20 s (2 × 10 s) before the third one is tried;
+- the first two nodes hang on the handshake — about 30 s (2 × 15 s).
+
+This price is paid on every connect and reconnect:
+
+- the first producer connection in a thread;
+- the reconnect after `reset_producer_channel()` — the `publish` call blocks for that time;
+- every consumer reconnect (on top of the backoff delay).
+
+See [Reliability](./reliability.md) for the reconnect logic.
+
+### Recommendation
+
+Lower `SOCKET_TIMEOUT` and `STACK_TIMEOUT` on a cluster alias, and keep
+`STACK_TIMEOUT >= SOCKET_TIMEOUT`:
+
+```python
+# settings.py
+RABBITMQ_CONNECTIONS: dict = {
+    'default': {
+        'NODES': [
+            {'HOST': 'rmq-1.internal', 'PORT': 5672},
+            {'HOST': 'rmq-2.internal', 'PORT': 5672},
+            {'HOST': 'rmq-3.internal', 'PORT': 5672},
+        ],
+        # ... the remaining keys as above ...
+        'SOCKET_TIMEOUT': 3.0,  # example values — tune for your network/TLS
+        'STACK_TIMEOUT': 6.0,
+    },
+}
+```
+
+Don't set them too low: on a slow network or with TLS a healthy node may fail to answer
+in time and the client will skip it. See
+Connection timeouts for details.
+
+### Healthcheck
+
+The `check_rabbitmq_connections` command does **not** walk the nodes sequentially. It probes
+all nodes in parallel with its own timeouts from `RABBITMQ_HEALTHCHECK`, and ignores the
+alias `SOCKET_TIMEOUT` / `STACK_TIMEOUT` and `SHUFFLE_NODES`. An alias is reported as OK as
+soon as the first node answers, so a dead node does not delay the verdict. See
+[`check_rabbitmq_connections`](./management-commands.md#check_rabbitmq_connections) and
+`RABBITMQ_HEALTHCHECK`.
+
+---
+
 ## Alternative: load balancer or DNS
 
 Instead of listing every node via `NODES`, you can put the cluster behind a single address:
@@ -162,7 +229,8 @@ as any other queue type, via the `queue_type` field on `QueueConfig`
 (see [`QueueType`](./api-reference.md#queuetype) in the API reference):
 
 ```python
-from django_rmq.queues.queue_config import QueueConfig, QueueType
+from django_rmq.queues.queue_config import QueueConfig,
+    QueueType
 
 orders_queue: QueueConfig = QueueConfig(name='orders', queue_type=QueueType.QUORUM)
 ```
@@ -177,6 +245,7 @@ needs arguments beyond what `QueueConfig` exposes:
 
 ```python
 from pika.adapters.blocking_connection import BlockingChannel
+
 
 def setup_quorum(channel: BlockingChannel) -> None:
     channel.queue_declare(
@@ -202,8 +271,10 @@ with quorum queues for durability across the cluster.
 
 ## See also
 
-- [Configuration](./configuration.md) — the full `NODES`/`SHUFFLE_NODES` parameter
-  reference and validation error cases.
+- [Configuration](./configuration.md) — the full `NODES`/`SHUFFLE_NODES`/`SOCKET_TIMEOUT`/
+  `STACK_TIMEOUT` parameter reference and validation error cases.
+- [Management Commands](./management-commands.md) — `check_rabbitmq_connections` probes
+  every node in parallel.
 - [Reliability](./reliability.md) — producer retry-once and consumer reconnect with
   backoff.
 - [Multiple Connections](./multiple-connections.md) — running several aliases in one

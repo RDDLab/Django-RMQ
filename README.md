@@ -13,7 +13,7 @@
 [![PyPI - Types](https://img.shields.io/pypi/types/django-rmq.svg?style=for-the-badge)](https://pypi.python.org/pypi/django-rmq)
 ---
 
-[![RabbitMQ Support](https://img.shields.io/static/v1?label=RabbitMQ%20Support&message=v3.13%20%7C%20v4.0%20%7C%20v4.1%20%7C%20v4.2%20%7C%20v4.3&color=ff6600&labelColor=555&style=for-the-badge)](https://www.rabbitmq.com/)
+[![RabbitMQ Support](https://img.shields.io/static/v1?label=RabbitMQ%20Support&message=v3.13%20%7C%20v4.0%20%7C%20v4.1%20%7C%20v4.2%20%7C%20v4.3%20%7C%20v4.4&color=ff6600&labelColor=555&style=for-the-badge)](https://www.rabbitmq.com/)
 
 ---
 [![Tests](https://img.shields.io/github/actions/workflow/status/RDDLab/Django-RMQ/testing.yml?branch=main&label=Tests)](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml)
@@ -31,7 +31,7 @@
 
 # Django-RMQ
 
-Django-RMQ provides RabbitMQ wrappers and tools for Django projects, built on top of [Pika](https://pika.readthedocs.io/). It is a lightweight integration layer — not a task queue or a Celery replacement — for projects that need to publish and consume messages while keeping broker infrastructure code predictable and close to the Django configuration. Supports RabbitMQ 3.13–4.3.
+Django-RMQ provides RabbitMQ wrappers and tools for Django projects, built on top of [Pika](https://pika.readthedocs.io/). It is a lightweight integration layer — not a task queue or a Celery replacement — for projects that need to publish and consume messages while keeping broker infrastructure code predictable and close to the Django configuration. Supports RabbitMQ 3.13–4.4.
 
 ## Features
 
@@ -41,9 +41,9 @@ Django-RMQ provides RabbitMQ wrappers and tools for Django projects, built on to
 - **Reliable delivery** — publisher confirms, `mandatory=True`, and `delivery_mode=2` (persistent) are enforced on every message.
 - **Auto-reconnect with backoff** — producers retry once on transient channel errors; consumers reconnect with exponential backoff capped at a configurable maximum.
 - **Dead-letter routing** — declare queues with `QueueConfig(dead_letter_exchange=...)` so unhandled messages are nacked without requeue and routed to a DLX.
-- **Management commands** — `setup_rabbitmq_topology` (idempotent exchange/queue/binding setup) and `start_consumers` (threaded runner with graceful SIGTERM/SIGINT shutdown).
+- **Management commands** — `setup_rabbitmq_topology` (idempotent exchange/queue/binding setup), `start_consumers` (threaded runner with graceful SIGTERM/SIGINT shutdown), and `check_rabbitmq_connections` (healthcheck for container probes).
 - **Multiple connections** — configure several broker aliases and select per producer/consumer via `using=`.
-- **RabbitMQ clusters** — point one alias at several nodes via NODES for client-side failover; pika tries each node until one connects. Optional SHUFFLE_NODES spreads clients across the cluster.
+- **RabbitMQ clusters** — point one alias at several nodes via NODES for client-side failover; pika tries each node until one connects. Optional SHUFFLE_NODES spreads clients across the cluster; per-alias `SOCKET_TIMEOUT`/`STACK_TIMEOUT` give faster failover.
 - **Fully typed** — ships `py.typed`; compatible with pyrefly and standard type checkers.
 
 ## Installation

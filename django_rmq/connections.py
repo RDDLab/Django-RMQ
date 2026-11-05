@@ -7,7 +7,7 @@ from pika.adapters.blocking_connection import BlockingChannel
 from pika.exceptions import AMQPError
 
 import django_rmq
-from django_rmq.dto.rabbitmq_config import RabbitMQConfig
+from django_rmq.dto.rabbitmq_config import NodeConfig, RabbitMQConfig
 from django_rmq.utils import resolve_alias
 
 logger = logging.getLogger('rabbitmq')
@@ -39,23 +39,62 @@ class RabbitMQConnectionManager:
 
     def __init__(self, config: RabbitMQConfig) -> None:
         self.config: RabbitMQConfig = config
-        credentials: PlainCredentials = PlainCredentials(
+        self._credentials: PlainCredentials = PlainCredentials(
             username=config.user,
             password=config.password,
         )
         self._node_parameters: list[ConnectionParameters] = [
-            ConnectionParameters(
-                host=node.host,
-                port=node.port,
-                virtual_host=config.virtual_host,
-                credentials=credentials,
-                heartbeat=config.heartbeat,
-                blocked_connection_timeout=config.blocked_connection_timeout,
+            self._make_node_parameters(
+                node=node,
+                socket_timeout=config.socket_timeout,
+                stack_timeout=config.stack_timeout,
             )
             for node in config.nodes
         ]
         self._shuffle_nodes: bool = config.shuffle_nodes
         self._local: threading.local = threading.local()
+
+    def _make_node_parameters(
+        self,
+        node: NodeConfig,
+        socket_timeout: float,
+        stack_timeout: float,
+    ) -> ConnectionParameters:
+        """
+        Builds pika connection parameters for a single node of this alias.
+
+        :param node: The node address.
+        :param socket_timeout: Seconds to wait for the TCP connection to the node.
+        :param stack_timeout: Seconds to wait for the full TCP + AMQP bring-up.
+        :return: ConnectionParameters sharing the alias credentials and settings.
+        """
+        return ConnectionParameters(
+            host=node.host,
+            port=node.port,
+            virtual_host=self.config.virtual_host,
+            credentials=self._credentials,
+            heartbeat=self.config.heartbeat,
+            blocked_connection_timeout=self.config.blocked_connection_timeout,
+            socket_timeout=socket_timeout,
+            stack_timeout=stack_timeout,
+        )
+
+    def build_probe_parameters(self, socket_timeout: float, stack_timeout: float) -> list[ConnectionParameters]:
+        """
+        Returns one set of connection parameters per node, for probing nodes independently.
+
+        Used by the healthcheck, which connects to every node in parallel with its
+        own timeouts. The order follows `NODES` and is never shuffled; nothing is
+        cached on the manager.
+
+        :param socket_timeout: Seconds to wait for the TCP connection to a node.
+        :param stack_timeout: Seconds to wait for the full TCP + AMQP bring-up of a node.
+        :return: Per-node ConnectionParameters, in configuration order.
+        """
+        return [
+            self._make_node_parameters(node=node, socket_timeout=socket_timeout, stack_timeout=stack_timeout)
+            for node in self.config.nodes
+        ]
 
     def _build_connection_sequence(self) -> list[ConnectionParameters]:
         """
