@@ -1,0 +1,32 @@
+name: Prepare documentation server
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Install documentation deployment files as the SSH user
+    if: github.ref == 'refs/heads/main'
+    runs-on:
+      group: Default
+      labels: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    environment: docs-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Prepare server files
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST_KEY: ${{ secrets.SSH_HOST_KEY }}
+        run: bash .github/docs/prepare-over-ssh.sh "$GITHUB_SHA"

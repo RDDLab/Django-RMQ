@@ -1,0 +1,94 @@
+name: Verify tested revision
+
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Commit to verify against the testing workflow on main
+        required: true
+        type: string
+      require_main_head:
+        description: Require the selected commit to still be the head of main
+        type: boolean
+        default: false
+      use_docs_runner:
+        description: Run documentation deployment checks on the self-hosted Linux X64 runner
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  verify:
+    name: Check completed tests on main
+    runs-on: >-
+      ${{ fromJSON(inputs.use_docs_runner && github.event_name == 'workflow_dispatch' &&
+        github.ref == 'refs/heads/main' && '["self-hosted","Linux","X64"]' || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    steps:
+      - name: Verify test results for the selected SHA
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          REQUIRE_MAIN_HEAD: ${{ inputs.require_main_head }}
+        with:
+          script: |
+            const sourceSha = process.env.SOURCE_SHA;
+            if (!/^[0-9a-f]{40}$/.test(sourceSha)) {
+              throw new Error("A full commit SHA is required.");
+            }
+
+            if (process.env.REQUIRE_MAIN_HEAD === "true") {
+              if (context.eventName === "workflow_dispatch" && context.ref !== "refs/heads/main") {
+                throw new Error("Run manual publishing from main.");
+              }
+              const { data: main } = await github.rest.git.getRef({ ...context.repo, ref: "heads/main" });
+              if (sourceSha !== main.object.sha) {
+                throw new Error("The package revision must be the current head of main.");
+              }
+            }
+
+            const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              ...context.repo, branch: "main", head_sha: sourceSha, per_page: 100,
+            });
+            const latestRun = runs.filter((run) =>
+              run.head_branch === "main" && run.head_sha === sourceSha && (
+                (run.path === ".github/workflows/main-ci.yml" && run.event === "push") ||
+                (run.path === ".github/workflows/testing.yml" && ["push", "workflow_dispatch"].includes(run.event))
+              )
+            ).sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id - b.id).at(-1);
+
+            if (!latestRun) {
+              throw new Error(`No CI run with tests on main was found for ${sourceSha}.`);
+            }
+            if (latestRun.status !== "completed" || latestRun.conclusion !== "success") {
+              throw new Error(`The latest CI run with tests for ${sourceSha} has not succeeded. ${latestRun.html_url}`);
+            }
+
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              ...context.repo, run_id: latestRun.id, filter: "all", per_page: 100,
+            });
+            const latestJobs = new Map();
+            for (const job of jobs) {
+              const name = job.name.split(" / ").at(-1);
+              if (!latestJobs.has(name) || job.id > latestJobs.get(name).id) {
+                latestJobs.set(name, job);
+              }
+            }
+
+            const pythonJobs = [...latestJobs.entries()].filter(([name]) => name.startsWith("Pytest (Python "));
+            const pythonPassed = pythonJobs.length > 0 && pythonJobs.every(([, job]) => job.conclusion === "success");
+            if (!pythonPassed) {
+              throw new Error(`No successful Pytest matrix for ${sourceSha}. ${latestRun.html_url}`);
+            }
+            const brokerJobs = [...latestJobs.entries()].filter(([name]) =>
+              name.startsWith("RabbitMQ integration (") || name.startsWith("RabbitMQ cluster (")
+            );
+            const integrationPassed = brokerJobs.some(([name]) => name.startsWith("RabbitMQ integration ("));
+            const clusterPassed = brokerJobs.some(([name]) => name.startsWith("RabbitMQ cluster ("));
+            if (!integrationPassed || !clusterPassed || brokerJobs.some(([, job]) => job.conclusion !== "success")) {
+              throw new Error(`No successful RabbitMQ integration and cluster matrices for ${sourceSha}. ${latestRun.html_url}`);
+            }
+            core.info(`Verified tests for ${sourceSha}: ${latestRun.html_url}`);

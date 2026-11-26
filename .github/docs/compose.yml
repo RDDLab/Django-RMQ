@@ -1,0 +1,19 @@
+services:
+  docs:
+    image: ${DOCS_IMAGE:?Set DOCS_IMAGE to a loaded documentation image}
+    pull_policy: never
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q -O /dev/null http://127.0.0.1:8080/ && wget -q -O /dev/null http://127.0.0.1:8080/ru/
+      interval: 5s
+      timeout: 3s
+      retries: 8

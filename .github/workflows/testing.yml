@@ -1,202 +1,231 @@
 name: Testing Django-RMQ pipeline
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Expected branch HEAD for an automatic dispatch
+        type: string
+        required: false
   workflow_call:
+    inputs:
+      source_sha:
+        description: Commit to verify (defaults to the triggering commit)
+        type: string
+        required: false
 
 permissions:
   contents: read
 
+env:
+  UV_VERSION: "0.13.10"
+
 jobs:
-
-  # Static analysis: linting/formatting (ruff) and type checking (pyrefly).
-  # Version-independent, so it runs once instead of across the full matrix.
-  # Pinned to the minimum supported Python (matching `python-version` in
-  # `[tool.pyrefly]`) so the lint environment mirrors the lowest target.
   lint:
-    runs-on: self-hosted
-
+    name: Python lint, types and Django checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Verify the dispatch commit
+        if: github.event_name == 'workflow_dispatch' && inputs.expected_sha != ''
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          if [[ "$GITHUB_SHA" != "$EXPECTED_SHA" ]]; then
+            echo "::error::The branch advanced before the test workflow started."
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.source_sha || github.sha }}
           persist-credentials: false
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
-
-      - name: Set up Python
-        run: uv python install 3.10
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: ${{ env.UV_VERSION }}
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --locked --group dev --python 3.10
 
-      - name: Run ruff (lint)
-        run: uv run ruff check .
-
-      - name: Run ruff (format check)
-        run: uv run ruff format --check .
-
-      - name: Run pyrefly (type check)
-        run: uv run pyrefly check
-
-      - name: Clean up runner artifacts
-        if: always()
+      - name: Run Ruff, Pyrefly and Django system checks
+        env:
+          DJANGO_SETTINGS_MODULE: tests.settings
         run: |
-          rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
-          find . -type d -name "__pycache__" -prune -exec rm -rf {} +
+          uv run --locked --python 3.10 ruff check .
+          uv run --locked --python 3.10 ruff format --check django_rmq tests
+          uv run --locked --python 3.10 pyrefly check
+          uv run --locked --python 3.10 python -m django check
 
-  # Unit tests across the supported Python versions
   unit-test:
-    runs-on: self-hosted
-
+    name: Pytest (Python ${{ matrix.python }}, Django ${{ matrix.django }})
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      UV_MANAGED_PYTHON: "true"
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
-      fail-fast: true
-
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+        django: [locked, minimum]
+        include:
+          - python: "3.10"
+            django_min: "4.2"
+          - python: "3.11"
+            django_min: "4.2"
+          - python: "3.12"
+            django_min: "4.2.8"
+          - python: "3.13"
+            django_min: "5.1.3"
+          - python: "3.14"
+            django_min: "5.2.8"
+          - python: "3.15"
+            django_min: "6.1.3"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.source_sha || github.sha }}
           persist-credentials: false
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: ${{ env.UV_VERSION }}
 
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+      - name: Run tests with locked Django
+        if: matrix.django == 'locked'
+        env:
+          PYTHON_VERSION: ${{ matrix.python }}
+        run: uv run --locked --python "$PYTHON_VERSION" pytest
 
-      - name: Install dependencies
-        run: uv sync --group dev --python ${{ matrix.python-version }}
+      - name: Run tests with minimum Django
+        if: matrix.django == 'minimum'
+        env:
+          PYTHON_VERSION: ${{ matrix.python }}
+          DJANGO_MIN: ${{ matrix.django_min }}
+        run: uv run --locked --python "$PYTHON_VERSION" --with "django==$DJANGO_MIN" pytest
 
-      - name: Run tests
-        run: uv run --python ${{ matrix.python-version }} pytest
+  package:
+    name: Build wheel and source archive
+    needs: [unit-test, integration-test, cluster-test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
+          persist-credentials: false
 
-      - name: Clean up runner artifacts
-        if: always()
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Build distributions
+        run: uv build --python 3.10
+
+  documentation:
+    name: Verify English and Russian documentation
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: docs/package.json
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Type-check the documentation
+        working-directory: docs
         run: |
-          rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
-          find . -type d -name "__pycache__" -prune -exec rm -rf {} +
+          npm install --global "$(node -p 'require("./package.json").packageManager')"
+          npm ci
+          npm run docs:typecheck
 
-  security:
-    name: Security checks
-    needs:
-      - lint
-      - unit-test
-    uses: ./.github/workflows/security.yml
-    permissions:
-      actions: read
-      contents: read
-      id-token: write
-      pull-requests: read
-      security-events: write
+      - name: Build and verify the documentation container
+        env:
+          DOCS_IMAGE: django-rmq-docs:ci
+        run: |
+          docker build --file .github/docs/Dockerfile --tag "$DOCS_IMAGE" .
+          compose() {
+            docker compose --project-name django-rmq-docs-ci --env-file /dev/null --file .github/docs/compose.yml "$@"
+          }
+          trap 'compose down' EXIT
+          compose up --detach --wait --wait-timeout 90
+          compose exec -T docs wget -q -O /dev/null http://docs:8080/
+          compose exec -T docs wget -q -O /dev/null http://docs:8080/ru/
 
-  # Integration tests against a real RabbitMQ broker (deselected in the unit job)
   integration-test:
-    runs-on: self-hosted
-
+    name: RabbitMQ integration (Python ${{ matrix.python }}, RabbitMQ ${{ matrix.rabbitmq }})
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
-        rabbitmq-version: [ "3.13", "4.0", "4.1", "4.2", "4.3", "4.4" ]
-      fail-fast: true
-
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+        rabbitmq: ["3.13", "4.0", "4.1", "4.2", "4.3", "4.4"]
     services:
       rabbitmq:
-        image: rabbitmq:${{ matrix.rabbitmq-version }}-management-alpine
+        image: rabbitmq:${{ matrix.rabbitmq }}-management-alpine
         ports:
-          - 5672:5672
-          - 15672:15672
+          - 5672/tcp
+          - 15672/tcp
         options: >-
           --health-cmd "rabbitmq-diagnostics -q ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
-
-    env:
-      RMQ_HOST: localhost
-      RMQ_PORT: 5672
-      RMQ_MGMT_PORT: 15672
-      RMQ_USER: guest
-      RMQ_PASSWORD: guest
-      RMQ_VHOST: /
-
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.source_sha || github.sha }}
           persist-credentials: false
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: ${{ env.UV_VERSION }}
 
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: uv sync --group dev --python ${{ matrix.python-version }}
-
-      - name: Run integration tests
-        run: uv run --python ${{ matrix.python-version }} pytest -m "integration and not cluster"
-
-      - name: Tear down RabbitMQ and clean up runner artifacts
-        if: always()
-        run: |
-          # Force-remove any RabbitMQ containers left on the runner
-          docker ps -aq --filter "ancestor=rabbitmq:${{ matrix.rabbitmq-version }}-management-alpine" \
-            | xargs -r docker rm -fv
-          docker image rm -f "rabbitmq:${{ matrix.rabbitmq-version }}-management-alpine" || true
-          # Wipe per-run Python/pytest build artifacts from the persistent workspace.
-          rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
-          find . -type d -name "__pycache__" -prune -exec rm -rf {} +
+      - name: Run broker integration tests
+        env:
+          PYTHON_VERSION: ${{ matrix.python }}
+          RMQ_PORT: ${{ job.services.rabbitmq.ports['5672'] }}
+          RMQ_MGMT_PORT: ${{ job.services.rabbitmq.ports['15672'] }}
+        run: uv run --locked --python "$PYTHON_VERSION" pytest -m "integration and not cluster"
 
   cluster-test:
-    runs-on: self-hosted
-
+    name: RabbitMQ cluster (Python ${{ matrix.python }})
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
-      fail-fast: true
-
-    env:
-      RABBITMQ_IMAGE: rabbitmq:4.4-management-alpine
-      RMQ_HOST: localhost
-      RMQ_PORT: 5672
-      RMQ_MGMT_PORT: 15672
-      RMQ_USER: guest
-      RMQ_PASSWORD: guest
-      RMQ_VHOST: /
-      RMQ_CLUSTER_NODES: localhost:5672,localhost:5673,localhost:5674
-      RMQ_CLUSTER_CONTAINERS: django-rmq-cluster-rabbit1,django-rmq-cluster-rabbit2,django-rmq-cluster-rabbit3
-      COMPOSE_FILE: .github/docker-compose.cluster.yml
-
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.source_sha || github.sha }}
           persist-credentials: false
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: ${{ env.UV_VERSION }}
 
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: uv sync --group dev --python ${{ matrix.python-version }}
-
-      - name: Start RabbitMQ cluster
-        run: docker compose -f "$COMPOSE_FILE" up -d --wait
-
-      - name: Run cluster tests
-        run: uv run --python ${{ matrix.python-version }} pytest -m cluster
-
-      - name: Tear down cluster and clean up runner artifacts
-        if: always()
+      - name: Start the cluster and run failover tests
+        env:
+          PYTHON_VERSION: ${{ matrix.python }}
         run: |
-          docker compose -f "$COMPOSE_FILE" down -v || true
-          docker image rm -f "$RABBITMQ_IMAGE" || true
-          # Wipe per-run Python/pytest build artifacts from the persistent workspace.
-          rm -rf .venv .pytest_cache .ruff_cache .coverage htmlcov
-          find . -type d -name "__pycache__" -prune -exec rm -rf {} +
+          compose() {
+            docker compose --file .github/docker-compose.cluster.yml "$@"
+          }
+          trap 'compose down --volumes' EXIT
+          compose up --detach --wait --wait-timeout 120
+          compose exec -T rabbit1 rabbitmqctl await_online_nodes 3 --timeout 60
+          uv run --locked --python "$PYTHON_VERSION" pytest -m cluster

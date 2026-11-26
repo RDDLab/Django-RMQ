@@ -30,6 +30,20 @@ Run the unit suite:
 uv run pytest
 ```
 
+### Python 3.15
+
+Django-RMQ 1.1.7 requires Django 6.1.3 or later on Python 3.15. Run the same unit suite against locked Django
+and the minimum supported version:
+
+```bash
+uv run --locked --python 3.15 pytest
+uv run --locked --python 3.15 --with "django==6.1.3" pytest
+```
+
+CI also runs the broker and cluster suites on Python 3.15. After starting the corresponding Compose service below,
+use `uv run --locked --python 3.15 pytest -m "integration and not cluster"` for a single broker or
+`uv run --locked --python 3.15 pytest -m cluster` for the three-node cluster.
+
 ---
 
 ## Integration tests
@@ -44,7 +58,7 @@ The repository ships a Compose file that starts the same image CI uses:
 docker compose -f .github/docker-compose.yml up -d --wait
 
 # Run only integration tests.
-uv run pytest -m integration
+uv run pytest -m "integration and not cluster"
 
 # Stop the broker when done.
 docker compose -f .github/docker-compose.yml down
@@ -70,7 +84,7 @@ Set them to point the suite at a different broker:
 
 ```bash
 RMQ_HOST=rmq.staging.internal RMQ_USER=ci RMQ_PASSWORD=secret \
-    uv run pytest -m integration
+    uv run pytest -m "integration and not cluster"
 ```
 
 ### Isolation

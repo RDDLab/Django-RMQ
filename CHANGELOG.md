@@ -4,6 +4,28 @@ All notable changes to **Django-RMQ** are documented in this file.
 
 ## [Unreleased]
 
+## 1.1.7 — 2026-11-26
+
+### Compatibility and tests
+
+- Support Python 3.15 with Django 6.1.3 or later. Keep Python 3.10–3.14 support.
+- Test locked and minimum Django versions on Python 3.10–3.15. Include Python 3.15 in the RabbitMQ 3.13–4.4
+  integration matrix, three-node cluster failover tests, and Codecov coverage job.
+- Refresh the Python lockfile, including Django and sqlparse. Run the pre-commit development hooks with Python 3.11
+  or later.
+
+### CI and publishing
+
+- Adopt the Django Chassis and Django GlobalConfig GitHub Actions pipeline. Run security scans before tests on
+  main, build the distributions, and verify both documentation locales.
+- Verify security and test results for the selected commit before publishing to PyPI or deploying documentation.
+
+### Documentation
+
+- Update Node.js to 24.22.3, npm to 12.2.3, React and React DOM to 19.3.1, the search plugin to 0.55.3,
+  and TypeScript to 7.0.2. Refresh the npm lockfile and type-check the documentation in CI.
+- Update the README and the English and Russian guides with the compatibility matrix and local Python 3.15 commands.
+
 ## [1.1.6] — 2026-11-04
 
 ### Added

@@ -29,11 +29,12 @@ ignore = [
 "apps.py" = ["F401"]
 # RecordingChannel mirrors pika's BlockingChannel signatures verbatim to stay
 # LSP-compatible, so the wide argument lists are intentional.
-"**/commands/setup_rabbitmq_topology.py" = ["PLR0913"]
+"**/commands/setup_rabbitmq_topology.py" = ["PLR0913", "PLR0917"]
 "tests/*" = [
     "PLR2004", # magic value in comparison — expected in assertions
     "PLW0108", # lambda may be unnecessary — concise test stubs
     "PLR0913", # many arguments — tests legitimately compose many fixtures
+    "PLR0917", # pytest injects fixtures by parameter name
 ]
 
 [lint.flake8-tidy-imports]

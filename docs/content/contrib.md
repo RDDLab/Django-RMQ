@@ -18,8 +18,10 @@ the [uv documentation](https://docs.astral.sh/uv/getting-started/installation/).
 After cloning the repository, install dependencies:
 
 ```bash
-uv sync --all-extras
+uv sync --locked
 ```
+
+Run pre-commit with Python 3.11 or later. The library and test suite also support Python 3.10.
 
 ## Linting
 
@@ -48,11 +50,12 @@ tox
 
 Documentation is built with [Docusaurus](https://docusaurus.io/).
 
-Install Node dependencies from the `docs` directory:
+Select the Node.js version in `.nvmrc`, then install the pinned npm version and dependencies from the lockfile.
 
 ```bash
 cd docs
-npm install
+npm install --global "$(node -p 'require("./package.json").packageManager')"
+npm ci
 ```
 
 Run the documentation server with hot reload:

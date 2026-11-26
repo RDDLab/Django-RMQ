@@ -1,0 +1,44 @@
+name: Dispatch tests for protected branches
+
+on:
+  workflow_run:
+    workflows: [Security checks]
+    types: [completed]
+    branches-ignore: [main]
+
+permissions: {}
+
+jobs:
+  dispatch:
+    name: Dispatch testing for the protected branch head
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    permissions:
+      actions: write
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check branch protection and dispatch testing
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [[ -z "$BRANCH" || ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Missing push branch or commit."
+            exit 1
+          fi
+
+          protected_heads=$(gh api --paginate "repos/$GITHUB_REPOSITORY/branches?protected=true&per_page=100")
+          is_protected_head=$(jq -rs --arg branch "$BRANCH" --arg sha "$SOURCE_SHA" \
+            'any(.[][]; .name == $branch and .commit.sha == $sha)' <<< "$protected_heads")
+          if [[ "$is_protected_head" != true ]]; then
+            echo "The pushed commit is no longer the head of a protected branch, or the branch is unprotected."
+            exit 0
+          fi
+
+          gh workflow run testing.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH" -f "expected_sha=$SOURCE_SHA"

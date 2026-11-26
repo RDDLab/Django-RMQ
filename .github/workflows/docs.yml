@@ -1,0 +1,174 @@
+name: Documentation
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Commit from main to deploy (defaults to the selected main revision)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  revision:
+    name: Verify source belongs to main
+    if: github.ref == 'refs/heads/main'
+    runs-on:
+      group: Default
+      labels: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - name: Verify documentation runner tools
+        shell: bash
+        run: |
+          for tool in git docker ssh flock tar gzip; do
+            if ! command -v "$tool" >/dev/null; then
+              echo "::error::The documentation runner requires $tool."
+              exit 1
+            fi
+          done
+          docker compose version
+          docker version --format 'Docker server {{.Server.Version}}'
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve documentation revision
+        id: source
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+        run: |
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] ||
+             ! git merge-base --is-ancestor "$SOURCE_SHA" HEAD; then
+            echo "::error::The documentation revision must be a commit in main."
+            exit 1
+          fi
+          echo "sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+  security:
+    name: Scan deployment revision
+    needs: revision
+    uses: ./.github/workflows/security.yml
+    with:
+      source_sha: ${{ needs.revision.outputs.source_sha }}
+      use_docs_runner: true
+
+  checks:
+    name: Verify successful tests for deployment revision
+    needs: [revision, security]
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/tested-revision.yml
+    with:
+      source_sha: ${{ needs.revision.outputs.source_sha }}
+      use_docs_runner: true
+
+  prepare:
+    name: Install documentation deployment files as the SSH user
+    needs: checks
+    runs-on:
+      group: Default
+      labels: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    environment: docs-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Prepare server files and verify architecture
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST_KEY: ${{ secrets.SSH_HOST_KEY }}
+        run: |
+          server_arch=$(bash .github/docs/prepare-over-ssh.sh "$GITHUB_SHA")
+          if [[ "$server_arch" != x86_64 ]]; then
+            echo "::error::The documentation server must be x86_64 to use the Linux X64 documentation runner."
+            exit 1
+          fi
+
+  deploy:
+    name: Build and deploy documentation
+    needs: [revision, prepare]
+    runs-on:
+      group: Default
+      labels: [self-hosted, Linux, X64]
+    env:
+      DOCS_IMAGE_NAME: django-rmq-docs
+    timeout-minutes: 30
+    environment:
+      name: docs-production
+      url: https://django-rmq.rdd-lab.com/
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build the documentation image on the runner
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ needs.revision.outputs.source_sha }}
+        run: |
+          build_dir=$(mktemp -d "$RUNNER_TEMP/docs-build.XXXXXXXX")
+          trap 'rm -rf -- "$build_dir"' EXIT
+
+          source_paths=(docs)
+          build_context="$build_dir/docs"
+          dockerfile="$build_context/Dockerfile"
+          if git cat-file -e "$SOURCE_SHA:.github/docs/Dockerfile" 2>/dev/null; then
+            source_paths+=(.github/docs)
+            build_context="$build_dir"
+            dockerfile="$build_context/.github/docs/Dockerfile"
+          fi
+          git archive "$SOURCE_SHA" "${source_paths[@]}" | tar -xf - -C "$build_dir"
+
+          if [[ ! -f "$dockerfile" ]]; then
+            echo "::error::The documentation revision does not contain a Dockerfile."
+            exit 1
+          fi
+          image_tag="$DOCS_IMAGE_NAME:$SOURCE_SHA"
+          docker build --progress=plain --file "$dockerfile" --tag "$image_tag" \
+            --label "org.opencontainers.image.revision=$SOURCE_SHA" \
+            --label "org.rddlab.docs.workflow-run=$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" "$build_context"
+
+      - name: Upload and start the prepared image over SSH
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ needs.revision.outputs.source_sha }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST_KEY: ${{ secrets.SSH_HOST_KEY }}
+          DOCS_IP: ${{ vars.DOCS_IP }}
+        run: |
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ || ! "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Full source and workflow commit SHAs are required."
+            exit 1
+          fi
+
+          ipv4_octet='(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])'
+          if [[ ! "$DOCS_IP" =~ ^($ipv4_octet\.){3}$ipv4_octet$ ]]; then
+            echo "::error::Set DOCS_IP to the portal's IPv4 address on docs_net."
+            exit 1
+          fi
+
+          docker image save "$DOCS_IMAGE_NAME:$SOURCE_SHA" | gzip -1 |
+            bash .github/docs/ssh.sh \
+              "bash \"\$HOME/.local/share/django-rmq-docs/$GITHUB_SHA/deploy-docs.sh\" $SOURCE_SHA $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT $DOCS_IP"

@@ -1,6 +1,6 @@
-![Icon](https://github.com/RDDLab/Django-RMQ/raw/main/docs/static/img/icon.svg)
-
-![Logo](https://github.com/RDDLab/Django-RMQ/raw/main/docs/static/img/logo.svg)
+<div align="center">
+  <img src="https://github.com/RDDLab/Django-RMQ/raw/main/docs/static/img/logo.svg" alt="Django-RMQ" width="560">
+</div>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=for-the-badge)](https://docs.astral.sh/ruff)
@@ -16,7 +16,7 @@
 [![RabbitMQ Support](https://img.shields.io/static/v1?label=RabbitMQ%20Support&message=v3.13%20%7C%20v4.0%20%7C%20v4.1%20%7C%20v4.2%20%7C%20v4.3%20%7C%20v4.4&color=ff6600&labelColor=555&style=for-the-badge)](https://www.rabbitmq.com/)
 
 ---
-[![Tests](https://img.shields.io/github/actions/workflow/status/RDDLab/Django-RMQ/testing.yml?branch=main&label=Tests)](https://github.com/RDDLab/Django-RMQ/actions/workflows/testing.yml)
+[![CI](https://github.com/RDDLab/Django-RMQ/actions/workflows/main-ci.yml/badge.svg?branch=main)](https://github.com/RDDLab/Django-RMQ/actions/workflows/main-ci.yml)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13524/badge)](https://www.bestpractices.dev/projects/13524)
 [![Codecov](https://img.shields.io/codecov/c/github/RDDLab/Django-RMQ/main?logo=codecov)](https://codecov.io/gh/RDDLab/Django-RMQ)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/RDDLab/Django-RMQ/main.svg)](https://results.pre-commit.ci/latest/github/RDDLab/Django-RMQ/main)
@@ -30,6 +30,8 @@
 ---
 
 # Django-RMQ
+
+**Django-RMQ 1.1.7 adds Python 3.15 support with Django 6.1.3 or later.**
 
 Django-RMQ provides RabbitMQ wrappers and tools for Django projects, built on top of [Pika](https://pika.readthedocs.io/). It is a lightweight integration layer — not a task queue or a Celery replacement — for projects that need to publish and consume messages while keeping broker infrastructure code predictable and close to the Django configuration. Supports RabbitMQ 3.13–4.4.
 
@@ -45,6 +47,19 @@ Django-RMQ provides RabbitMQ wrappers and tools for Django projects, built on to
 - **Multiple connections** — configure several broker aliases and select per producer/consumer via `using=`.
 - **RabbitMQ clusters** — point one alias at several nodes via NODES for client-side failover; pika tries each node until one connects. Optional SHUFFLE_NODES spreads clients across the cluster; per-alias `SOCKET_TIMEOUT`/`STACK_TIMEOUT` give faster failover.
 - **Fully typed** — ships `py.typed`; compatible with pyrefly and standard type checkers.
+
+## Compatibility
+
+| Python | Minimum Django in CI |
+| --- | --- |
+| 3.10–3.11 | 4.2 |
+| 3.12 | 4.2.8 |
+| 3.13 | 5.1.3 |
+| 3.14 | 5.2.8 |
+| 3.15 | 6.1.3 |
+
+CI tests these minimum Django versions and the versions selected by `uv.lock`.
+Django-RMQ supports RabbitMQ 3.13–4.4 and installs Pika (`>=1.4.1,<2.0`) automatically.
 
 ## Installation
 
@@ -121,13 +136,29 @@ uv run python manage.py start_consumers
 
 ## Documentation
 
-Full reference, configuration guide, reliability details, and more:
+[Read the documentation](https://django-rmq.rdd-lab.com/) for configuration, reliability, and the API reference.
 
-**https://django-rmq.rdd-lab.com/**
+Use the Node.js version in `.nvmrc` and install the pinned npm version before building both locales.
+
+```bash
+cd docs
+npm install --global "$(node -p 'require("./package.json").packageManager')"
+npm ci
+npm run docs:typecheck
+npm run docs:build
+```
+
+[Documentation deployment](.github/docs/README.md) covers the GitHub Actions environment and server setup.
 
 ---
 
 ## Testing
+
+GitHub Actions runs security checks on pull requests and pushes. On `main`,
+CI continues with unit tests, the RabbitMQ integration and cluster matrices,
+package builds, and documentation checks. Other protected branches run the
+same tests after a successful push scan. PyPI publishing and documentation
+deployment require a successful run for the selected commit.
 
 ### Unit tests
 
@@ -136,7 +167,11 @@ tests are marked `integration` and deselected:
 
 ```bash
 uv run pytest
+uv run --locked --python 3.15 pytest
 ```
+
+On Python 3.15, CI runs the unit suite with both locked Django and the minimum Django 6.1.3.
+The single-broker integration tests and the three-node cluster tests also run on Python 3.15.
 
 ### Integration tests
 
@@ -148,12 +183,21 @@ which already match the Compose service:
 
 ```bash
 docker compose -f .github/docker-compose.yml up -d --wait    # start the broker, block until healthy
-uv run pytest -m integration
+uv run pytest -m "integration and not cluster"
 docker compose -f .github/docker-compose.yml down            # stop it when done
 ```
 
 The suite isolates itself with per-test `uuid`-suffixed queues/exchanges and
 cleans them up, so it is safe against a shared broker (use a dedicated vhost).
+
+For failover tests, start the three-node cluster after stopping the single broker:
+
+```bash
+docker compose -f .github/docker-compose.cluster.yml up -d --wait
+docker compose -f .github/docker-compose.cluster.yml exec -T rabbit1 rabbitmqctl await_online_nodes 3 --timeout 60
+uv run pytest -m cluster
+docker compose -f .github/docker-compose.cluster.yml down -v
+```
 
 ---
 

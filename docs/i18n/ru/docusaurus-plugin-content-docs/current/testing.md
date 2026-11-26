@@ -28,6 +28,20 @@ markers = [
 uv run pytest
 ```
 
+### Python 3.15
+
+Django-RMQ 1.1.7 на Python 3.15 требует Django 6.1.3 или новее. Один и тот же набор юнит-тестов можно
+запустить с версией Django из lockfile и с минимальной поддерживаемой версией:
+
+```bash
+uv run --locked --python 3.15 pytest
+uv run --locked --python 3.15 --with "django==6.1.3" pytest
+```
+
+CI также запускает тесты брокера и кластера на Python 3.15. После запуска нужного Compose-окружения по инструкциям
+ниже используйте `uv run --locked --python 3.15 pytest -m "integration and not cluster"` для одиночного брокера
+или `uv run --locked --python 3.15 pytest -m cluster` для трёхнодового кластера.
+
 ---
 
 ## Интеграционные тесты
@@ -42,7 +56,7 @@ uv run pytest
 docker compose -f .github/docker-compose.yml up -d --wait
 
 # Run only integration tests.
-uv run pytest -m integration
+uv run pytest -m "integration and not cluster"
 
 # Stop the broker when done.
 docker compose -f .github/docker-compose.yml down
@@ -67,7 +81,7 @@ docker compose -f .github/docker-compose.yml down
 
 ```bash
 RMQ_HOST=rmq.staging.internal RMQ_USER=ci RMQ_PASSWORD=secret \
-    uv run pytest -m integration
+    uv run pytest -m "integration and not cluster"
 ```
 
 ### Изоляция

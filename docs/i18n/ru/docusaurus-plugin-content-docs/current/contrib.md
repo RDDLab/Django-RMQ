@@ -16,8 +16,10 @@ sidebar_position: 14
 После клонирования репозитория установите зависимости:
 
 ```bash
-uv sync --all-extras
+uv sync --locked
 ```
+
+Запускайте pre-commit на Python 3.11 и новее. Библиотека и тесты также поддерживают Python 3.10.
 
 ## Линтинг
 
@@ -50,7 +52,8 @@ tox
 
 ```bash
 cd docs
-npm install
+npm install --global "$(node -p 'require("./package.json").packageManager')"
+npm ci
 ```
 
 Запустите сервер документации с горячей перезагрузкой:

@@ -1,0 +1,10 @@
+services:
+  docs:
+    networks:
+      docs_net:
+        ipv4_address: ${DOCS_IP:?Set DOCS_IP to the portal IPv4 address on docs_net}
+
+networks:
+  docs_net:
+    external: true
+    name: docs_net

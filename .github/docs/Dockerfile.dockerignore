@@ -1,0 +1,11 @@
+*
+!docs/
+!docs/**
+!.github/
+!.github/docs/
+!.github/docs/angie.conf
+docs/node_modules
+docs/build
+docs/.docusaurus*
+docs/.git
+docs/.env*

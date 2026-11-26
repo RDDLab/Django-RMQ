@@ -5,10 +5,18 @@ sidebar_position: 2
 
 ## Requirements
 
-- Python >= 3.10
-- Django >= 4.2
+| Python | Minimum Django in CI |
+| --- | --- |
+| 3.10–3.11 | 4.2 |
+| 3.12 | 4.2.8 |
+| 3.13 | 5.1.3 |
+| 3.14 | 5.2.8 |
+| 3.15 | 6.1.3 |
+
 - RabbitMQ 3.13–4.4
-- `pika==1.4.1` (installed automatically as a dependency)
+- Pika `>=1.4.1,<2.0` (installed automatically as a dependency)
+
+For a self-managed RabbitMQ broker, consult the [Erlang/OTP compatibility matrix](https://www.rabbitmq.com/docs/which-erlang).
 
 ## Installation
 

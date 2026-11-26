@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "NOWPayments public donation button in the project README"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^README\.md$''']
+regexTarget = "line"
+regexes = ['''(?m)^<a href="https://nowpayments\.io/donation\?api_key=[A-Za-z0-9-]+" target="_blank" rel="noreferrer noopener">$''']

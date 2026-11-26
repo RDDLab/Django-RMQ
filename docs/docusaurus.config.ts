@@ -115,7 +115,7 @@ const config: Config = {
           lastVersion: 'current',
           versions: {
             current: {
-              label: '1.1.6',
+              label: '1.1.7',
               path: '',
             },
             '1.0.5': {
@@ -133,7 +133,7 @@ const config: Config = {
           customCss: './src/css/custom.css',
         },
         sitemap: {
-          lastmod: 'date',
+          lastmod: process.env.DOCS_WITHOUT_GIT === '1' ? null : 'date',
           changefreq: 'weekly',
           filename: 'sitemap.xml',
         },
