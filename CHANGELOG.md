@@ -4,6 +4,8 @@ All notable changes to **Django-RMQ** are documented in this file.
 
 ## [Unreleased]
 
+- Run Ruff as a linter in pre-commit, GitHub Actions, and tox.
+
 ## 1.1.7 — 2026-11-26
 
 ### Compatibility and tests

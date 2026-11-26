@@ -54,7 +54,6 @@ jobs:
           DJANGO_SETTINGS_MODULE: tests.settings
         run: |
           uv run --locked --python 3.10 ruff check .
-          uv run --locked --python 3.10 ruff format --check django_rmq tests
           uv run --locked --python 3.10 pyrefly check
           uv run --locked --python 3.10 python -m django check
 

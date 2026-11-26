@@ -29,7 +29,6 @@ Run Ruff locally before opening a pull request:
 
 ```bash
 uv run ruff check .
-uv run ruff format --check .
 ```
 
 ## Testing

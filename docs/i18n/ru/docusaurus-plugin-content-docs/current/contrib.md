@@ -27,7 +27,6 @@ uv sync --locked
 
 ```bash
 uv run ruff check .
-uv run ruff format --check .
 ```
 
 ## Тестирование
