@@ -188,6 +188,7 @@ export default function Home(): ReactNode {
   const copy = i18n.currentLocale === 'ru' ? ru : en;
   const iconSrc = useBaseUrl('/img/icon.svg');
   const latestVersion = useLatestVersion(undefined);
+  const guidePaths = new Set(latestVersion.docs.map(({id}) => '/docs/' + id));
 
   return (
     <Layout title={copy.title} description={copy.description}>
@@ -278,7 +279,7 @@ export default function Home(): ReactNode {
               {copy.guidesTitle}
             </Heading>
             <div className={styles.guides}>
-              {copy.guides.map((guide) => (
+              {copy.guides.filter(({to}) => guidePaths.has(to)).map((guide) => (
                 <Link className={styles.guide} key={guide.to} to={guide.to}>
                   <Heading as="h3">{guide.title}</Heading>
                   <p>{guide.body}</p>

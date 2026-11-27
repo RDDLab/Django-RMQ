@@ -148,7 +148,8 @@ npm run docs:typecheck
 npm run docs:build
 ```
 
-[Documentation deployment](.github/docs/README.md) covers the GitHub Actions environment and server setup.
+[Documentation releases](docs/README.md) covers versioning. [Documentation deployment](.github/docs/README.md)
+covers the GitHub Actions environment and server setup.
 
 ---
 

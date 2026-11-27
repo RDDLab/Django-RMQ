@@ -41,6 +41,11 @@ jobs:
         with:
           version: "0.13.10"
 
+      - name: Check package version, documentation archive, and release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: uv run --no-project --python 3.13 python .github/scripts/check_docs_version.py
+
       - name: Build distributions
         run: uv build --python 3.10
 

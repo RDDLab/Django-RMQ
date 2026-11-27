@@ -5,6 +5,9 @@ All notable changes to **Django-RMQ** are documented in this file.
 ## [Unreleased]
 
 - Run Ruff as a linter in pre-commit, GitHub Actions, and tox.
+- Serve the first version in the documentation version list in production and local preview.
+  Keep one set of guides per release.
+  Check the new bilingual snapshot when publishing a release.
 
 ## 1.1.7 — 2026-11-26
 

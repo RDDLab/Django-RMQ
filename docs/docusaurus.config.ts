@@ -2,6 +2,10 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+import releasedVersions from './versions.json';
+
+const stableVersion = releasedVersions[0];
+
 const YANDEX_METRIKA_ID = 111872223;
 
 function yandexMetrika() {
@@ -108,24 +112,14 @@ const config: Config = {
       'classic',
       {
         docs: {
-          path: 'content',
-          sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/RDDLab/Django-RMQ/tree/main/docs/',
           editLocalizedFiles: true,
-          lastVersion: 'current',
+          includeCurrentVersion: false,
+          lastVersion: stableVersion,
           versions: {
-            current: {
-              label: '1.1.7',
-              path: '',
-            },
-            '1.0.5': {
-              label: '1.0.5',
-              banner: 'none',
-            },
-            '1.0.4': {
-              label: '1.0.4',
-              banner: 'none',
-            },
+            ...Object.fromEntries(
+              releasedVersions.map((version) => [version, {badge: false, banner: 'none'} as const]),
+            ),
           },
         },
         blog: false,
@@ -150,7 +144,10 @@ const config: Config = {
         indexDocs: true,
         indexBlog: false,
         indexPages: true,
-        docsDir: 'content',
+        docsDir: releasedVersions.flatMap((version) => [
+          `versioned_docs/version-${version}`,
+          `i18n/ru/docusaurus-plugin-content-docs/version-${version}`,
+        ]),
         docsRouteBasePath: '/docs',
         explicitSearchResultPath: true,
       },
