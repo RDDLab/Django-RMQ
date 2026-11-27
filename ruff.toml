@@ -7,6 +7,10 @@ exclude = [
     ".venv",
 ]
 
+[per-file-target-version]
+# The publish workflow runs this script on Python 3.13.
+".github/scripts/check_docs_version.py" = "py313"
+
 [lint]
 select = [
     "E",   # pycodestyle errors
